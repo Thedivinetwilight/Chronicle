@@ -73,11 +73,11 @@ export function MilestoneDialog({
         </>
       }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <div className="form-stack">
         <Field label="What was achieved?" required>
           <TextInput value={title} onChange={setTitle} placeholder="First working retrieval pass" />
         </Field>
-        <div style={{ display: 'grid', gap: 'var(--space-3)', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+        <div className="grid-fields">
           <Field label="Date achieved">
             <TextInput type="date" value={date} onChange={setDate} />
           </Field>

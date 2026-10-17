@@ -25,10 +25,15 @@
   --font-size-xl: 20px;
   --font-size-2xl: 24px;
   --font-size-3xl: 30px;
+  /* The one display size: the home heading. Fluid so phones stay calm. */
+  --font-size-display: clamp(26px, 7vw, 32px);
 
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
+
+  --tracking-tight: -0.021em;
+  --tracking-label: 0.07em;
 
   --line-height-tight: 1.25;
   --line-height-body: 1.55;
@@ -52,6 +57,7 @@
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
+  --radius-xl: 18px;
   --radius-full: 999px;
 
   /* -- motion -------------------------------------------------------------- */
@@ -62,7 +68,8 @@
 
   /* -- layout -------------------------------------------------------------- */
   --sidebar-width: 260px;
-  --header-height: 56px;
+  --header-height: 52px;
+  --tabbar-height: 58px;
   --touch-target: 44px;
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);

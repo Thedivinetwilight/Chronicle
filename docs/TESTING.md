@@ -62,10 +62,31 @@ Run: `npm test` (Vitest, jsdom, `fake-indexeddb` for real IndexedDB semantics).
   Current: ~158 KiB (index 44 + react 82 + storage 32 + runtime 0.4); the
   capture engine (~19 KiB) loads lazily on first capture.
 
-## 4. Known gaps (honest list)
+## 4. Real-browser verification (`scripts/visual/harness.mjs`)
 
-- No real-browser E2E: the sandbox has no Chromium/Playwright, so PWA install,
-  service-worker offline behaviour and touch interactions are verified by
-  build inspection and `curl` against `vite preview`, not by a browser.
-- Visual regressions are not screenshot-tested; contrast and tokens are.
+A headless-Chromium harness exercises the built app (see
+`scripts/visual/README.md`). On the V0.1 refinement run it produced:
+
+- 60 screenshots: 8 routes + capture compose/review, at 390×844, 360×740,
+  834×1112, 1440×900 and 1680×1000, in light and dark themes.
+- Layout/touch audit on every screen: **0** horizontal-overflow cases, **0**
+  clipped elements, **0** touch targets below the tier minimums (44 px
+  primary / 32 px compact secondary on coarse pointers).
+- 12 interaction checks, all passing: capture → review → save → visible in
+  journal; undo (soft delete) from the toast; visible keyboard focus ring;
+  Settings theme switch; search term highlighting; project delete impact
+  preview; and the app shell rendering with the network cut (service worker).
+- Zero page or console errors across all runs.
+
+Screenshots are verification artefacts kept outside Git; re-run the harness
+to regenerate them on any machine with a browser.
+
+## 5. Known gaps (honest list)
+
+- Browser verification ran in headless Chromium inside a Linux sandbox whose
+  only installed UI font family is Inter (installed locally for stable
+  rendering). Real devices (Android/iOS/desktop) apply their system font via
+  the documented stack and have **not** been tested directly.
+- PWA *install* prompts and standalone launch are verified by manifest/service
+  worker inspection and offline rendering, not by an install flow on a phone.
 - The AI HTTP provider is tested with injected fetch stubs, not a live model.

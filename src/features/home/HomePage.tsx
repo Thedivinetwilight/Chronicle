@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom';
 import { useChronicle } from '../../state/ChronicleContext';
 import { useProjects, useTasks, useTimeline } from '../../state/hooks';
 import { addLocalDays, formatDateLabel, localDateIso, todayIso } from '../../domain/time';
-import { Badge, Button, TextArea } from '../../ui/primitives';
+import { Badge, Button } from '../../ui/primitives';
 import { Icon } from '../../ui/Icon';
 import { EmptyState, SkeletonList } from '../../ui/states';
 import { DayHeader, MetaLine, RelativeTime } from '../../ui/format';
@@ -26,8 +26,8 @@ function EventRow({ event, timezone }: { event: TimelineEvent; timezone: string 
   return (
     <Link className="list__item entrycard" to={event.path}>
       <div className="entrycard__title">
-        <Icon name={KIND_ICON[event.kind]} size={15} style={{ verticalAlign: '-2px', marginRight: 6 }} />
-        {event.title}
+        <Icon name={KIND_ICON[event.kind]} size={15} className="icon-inline" />
+        <span>{event.title}</span>
       </div>
       <MetaLine>
         <RelativeTime at={event.occurred_at} timezone={timezone} />
@@ -35,7 +35,7 @@ function EventRow({ event, timezone }: { event: TimelineEvent; timezone: string 
         {event.edited ? <span>· edited</span> : null}
         {event.private ? (
           <Badge>
-            <Icon name="lock" size={10} /> private
+            <Icon name="lock" size={10} className="icon-inline" /> private
           </Badge>
         ) : null}
       </MetaLine>
@@ -57,41 +57,43 @@ export function HomePage() {
     toast(`Marked “${title}” done.`, { tone: 'success' });
   };
 
+  const submitDraft = () => {
+    if (!draft.trim()) return;
+    openCapture(draft);
+    setDraft('');
+  };
+
   const hasAnything = (events?.length ?? 0) > 0 || (projects?.length ?? 0) > 0;
 
   return (
     <div className="page">
       <header className="page__header">
-        <div className="page__title">
-          <span className="text-xs text-faint">{formatDateLabel(today)}</span>
+        <div className="page__title page__title--display">
+          <span className="eyebrow">{formatDateLabel(today)}</span>
           <h1>What happened?</h1>
         </div>
       </header>
 
-      <section className="card" aria-label="Quick capture">
-        <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          <label className="sr-only" htmlFor="home-capture">
-            What happened?
-          </label>
-          <TextArea
-            id="home-capture"
-            rows={3}
-            value={draft}
-            onChange={setDraft}
-            placeholder="Write what happened in plain words — Chronicle reads the date, project and follow-ups from the sentence."
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
-            <Button
-              variant="primary"
-              disabled={!draft.trim()}
-              onClick={() => {
-                openCapture(draft);
-                setDraft('');
-              }}
-            >
-              Capture
-            </Button>
-          </div>
+      <section className="composer" aria-label="Quick capture">
+        <label className="sr-only" htmlFor="home-capture">
+          What happened?
+        </label>
+        <textarea
+          className="composer__input"
+          id="home-capture"
+          rows={3}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') submitDraft();
+          }}
+          placeholder="Write what happened in plain words — Chronicle reads the date, project and follow-ups from the sentence."
+        />
+        <div className="composer__bar">
+          <span className="composer__hint">Dates, projects and follow-ups are read from your words.</span>
+          <Button variant="primary" title="Capture (Ctrl or ⌘ + Enter)" disabled={!draft.trim()} onClick={submitDraft}>
+            Capture
+          </Button>
         </div>
       </section>
 
@@ -99,25 +101,24 @@ export function HomePage() {
 
       {tasks && tasks.length > 0 && (
         <section aria-label="Due soon">
-          <h2 className="text-sm text-muted" style={{ marginBottom: 'var(--space-2)' }}>
-            Due soon
-          </h2>
+          <div className="section-head">
+            <h2 className="section-head__title">Due soon</h2>
+          </div>
           <div className="card list">
             {tasks.slice(0, 5).map((task) => (
-              <div className="list__item" key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <div className="list__item row-task" key={task.id}>
                 <button
                   type="button"
-                  className="iconbtn"
-                  style={{ width: 28, height: 28 }}
+                  className="row-check"
                   aria-label={`Mark “${task.title}” done`}
                   onClick={() => void completeTask(task.id, task.title)}
                 >
-                  <Icon name="check" size={15} />
+                  <Icon name="check" size={14} />
                 </button>
-                <span style={{ flex: 1 }} className="text-sm">
-                  {task.title}
-                </span>
-                {task.due_on ? <Badge tone={task.due_on < today ? 'warning' : 'neutral'}>{formatDateLabel(task.due_on)}</Badge> : null}
+                <span className="text-sm row-task__title">{task.title}</span>
+                {task.due_on ? (
+                  <Badge tone={task.due_on < today ? 'warning' : 'neutral'}>{formatDateLabel(task.due_on)}</Badge>
+                ) : null}
               </div>
             ))}
           </div>
@@ -125,9 +126,9 @@ export function HomePage() {
       )}
 
       <section aria-label="Recent activity">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 'var(--space-2)' }}>
-          <h2 className="text-sm text-muted">Since yesterday</h2>
-          <Link to="/timeline" className="text-xs">
+        <div className="section-head">
+          <h2 className="section-head__title">Since yesterday</h2>
+          <Link to="/timeline" className="section-head__link">
             Full timeline
           </Link>
         </div>
@@ -151,7 +152,7 @@ export function HomePage() {
               return (
                 <div key={event.id}>
                   {newDay ? (
-                    <div style={{ padding: 'var(--space-2) var(--space-4) 0' }}>
+                    <div style={{ padding: 'var(--space-3) var(--space-4) 0' }}>
                       <DayHeader date={day} timezone={timezone} />
                     </div>
                   ) : null}
@@ -165,13 +166,13 @@ export function HomePage() {
 
       {projects && projects.length > 0 && (
         <section aria-label="Projects">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 'var(--space-2)' }}>
-            <h2 className="text-sm text-muted">Projects</h2>
-            <Link to="/projects" className="text-xs">
+          <div className="section-head">
+            <h2 className="section-head__title">Projects</h2>
+            <Link to="/projects" className="section-head__link">
               All projects
             </Link>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <div className="chip-row">
             {projects.map((project) => (
               <Link key={project.id} to={`/projects/${project.id}`} className="tagchip">
                 {project.name}

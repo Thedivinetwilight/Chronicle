@@ -50,7 +50,7 @@ export function ProjectsPage() {
           <h1>Projects</h1>
           <span className="text-xs text-faint">{visible.length} shown</span>
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+        <div className="page__actions">
           <Segmented
             label="Scope"
             value={scope}
@@ -81,15 +81,16 @@ export function ProjectsPage() {
         </EmptyState>
       ) : null}
 
+      {visible.length > 0 ? (
       <div className="card list">
         {visible.map((project) => (
           <Link key={project.id} className="list__item entrycard" to={`/projects/${project.id}`}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <span className="entrycard__title">{project.name}</span>
+            <div className="entrycard__title">
+              <span>{project.name}</span>
               <Badge tone={STATUS_TONE[project.status]}>{project.status}</Badge>
               {project.privacy === 'private' ? (
                 <Badge>
-                  <Icon name="lock" size={10} /> private
+                  <Icon name="lock" size={10} className="icon-inline" /> private
                 </Badge>
               ) : null}
             </div>
@@ -107,6 +108,7 @@ export function ProjectsPage() {
           </Link>
         ))}
       </div>
+      ) : null}
 
       <ProjectDialog
         open={editing !== null}

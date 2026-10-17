@@ -50,25 +50,18 @@ export function SearchPage() {
         </div>
       </header>
 
-      <div style={{ position: 'relative' }}>
-        <Icon
-          name="search"
-          size={18}
-          style={{ position: 'absolute', left: 12, top: 12, color: 'var(--color-text-faint)' }}
-        />
-        <div style={{ paddingLeft: 38 }}>
-          <TextInput value={text} onChange={setText} placeholder="Search titles, text, tags, #tag…" />
-        </div>
+      <div className="searchfield">
+        <Icon name="search" size={18} className="icon-inline" />
+        <TextInput value={text} onChange={setText} placeholder="Search titles, text, tags, #tag…" />
       </div>
 
-      <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+      <div className="page__controls">
         {(['all', 'entries', 'projects', 'tasks', 'milestones'] as const).map((option) => (
           <button
             key={option}
             type="button"
             className="tagchip"
             aria-pressed={kind === option}
-            style={kind === option ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' } : undefined}
             onClick={() => setKind(option)}
           >
             {option === 'all' ? 'Everything' : KIND_LABEL[option]}
@@ -90,9 +83,11 @@ export function SearchPage() {
       ) : (
         grouped.map(([groupKind, groupHits]) => (
           <section key={groupKind} aria-label={KIND_LABEL[groupKind] ?? groupKind}>
-            <h2 className="text-sm text-muted" style={{ marginBottom: 'var(--space-2)' }}>
-              {KIND_LABEL[groupKind] ?? groupKind} <span className="text-faint">({groupHits.length})</span>
-            </h2>
+            <div className="section-head">
+              <h2 className="section-head__title">
+                {KIND_LABEL[groupKind] ?? groupKind} · {groupHits.length}
+              </h2>
+            </div>
             <div className="card list">
               {groupHits.map((hit) => (
                 <Link key={`${hit.kind}:${hit.id}`} className="list__item entrycard" to={hitPath(hit)}>

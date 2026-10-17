@@ -117,7 +117,7 @@ export function ProjectDialog({
         </>
       }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <div className="form-stack">
         <Field label="Name" required>
           <TextInput value={name} onChange={setName} placeholder="JARVIS" />
         </Field>
@@ -127,7 +127,7 @@ export function ProjectDialog({
         <Field label="Objectives" hint="Optional. Markdown is fine.">
           <TextArea value={objectives} onChange={setObjectives} rows={3} />
         </Field>
-        <div style={{ display: 'grid', gap: 'var(--space-3)', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+        <div className="grid-fields">
           <Field label="Status">
             <Select label="Status" value={status} onChange={setStatus} options={STATUS_OPTIONS} />
           </Field>
@@ -208,7 +208,7 @@ export function DeleteProjectDialog({
         </>
       }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <div className="form-stack">
         <p className="text-sm">
           The project is archived, not erased: it stays in your archive and in exports, and you can
           restore it later from Settings → Deleted.

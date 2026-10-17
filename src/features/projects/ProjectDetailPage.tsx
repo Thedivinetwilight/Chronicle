@@ -55,7 +55,7 @@ export function ProjectDetailPage() {
             <Badge>{project.stage}</Badge>
             {project.privacy === 'private' ? (
               <Badge>
-                <Icon name="lock" size={10} /> private
+                <Icon name="lock" size={10} className="icon-inline" /> private
               </Badge>
             ) : null}
             {project.started_on ? <span>started {formatDateLabel(project.started_on)}</span> : null}
@@ -64,7 +64,7 @@ export function ProjectDetailPage() {
             <RelativeTime at={project.updated_at} timezone={timezone} />
           </MetaLine>
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+        <div className="page__actions">
           <IconButton name="edit" label="Edit project" onClick={() => setEditing(true)} />
           <IconButton name="trash" label="Delete project" onClick={() => setDeleting(true)} />
         </div>
@@ -72,11 +72,11 @@ export function ProjectDetailPage() {
 
       {(project.summary || project.objectives) && (
         <section className="card">
-          <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <div className="card__body form-stack form-stack--tight">
             {project.summary ? <p className="text-muted">{project.summary}</p> : null}
             {project.objectives ? <MarkdownView source={project.objectives} /> : null}
             {project.tags.length > 0 && (
-              <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+              <div className="chip-row">
                 {project.tags.map((tag) => (
                   <span key={tag} className="tagchip">
                     #{tag}
@@ -89,8 +89,8 @@ export function ProjectDetailPage() {
       )}
 
       <section aria-label="Milestones">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 'var(--space-2)' }}>
-          <h2 className="text-sm text-muted">Milestones</h2>
+        <div className="section-head">
+          <h2 className="section-head__title">Milestones</h2>
           <Button size="sm" variant="quiet" icon="plus" onClick={() => setMilestoneDraft('new')}>
             Add
           </Button>
@@ -101,9 +101,9 @@ export function ProjectDetailPage() {
           <div className="card list">
             {(milestones ?? []).map((milestone) => (
               <div className="list__item entrycard" key={milestone.id}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                  <Icon name="flag" size={15} />
-                  <span className="entrycard__title">{milestone.title}</span>
+                <div className="entrycard__title">
+                  <Icon name="flag" size={15} className="icon-inline" />
+                  <span>{milestone.title}</span>
                   <Badge tone={milestone.status === 'achieved' ? 'success' : 'neutral'}>{milestone.status}</Badge>
                   <Badge tone={milestone.verification === 'verified' ? 'success' : 'warning'}>{milestone.verification}</Badge>
                 </div>
@@ -118,27 +118,24 @@ export function ProjectDetailPage() {
       </section>
 
       <section aria-label="Open tasks">
-        <h2 className="text-sm text-muted" style={{ marginBottom: 'var(--space-2)' }}>
-          Open tasks
-        </h2>
+        <div className="section-head">
+          <h2 className="section-head__title">Open tasks</h2>
+        </div>
         {openTasks.length === 0 ? (
           <p className="text-sm text-faint">Nothing open.</p>
         ) : (
           <div className="card list">
             {openTasks.map((task) => (
-              <div className="list__item" key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <div className="list__item row-task" key={task.id}>
                 <button
                   type="button"
-                  className="iconbtn"
-                  style={{ width: 28, height: 28 }}
+                  className="row-check"
                   aria-label={`Mark “${task.title}” done`}
                   onClick={() => void completeTask(task.id, task.title)}
                 >
-                  <Icon name="check" size={15} />
+                  <Icon name="check" size={14} />
                 </button>
-                <span className="text-sm" style={{ flex: 1 }}>
-                  {task.title}
-                </span>
+                <span className="text-sm row-task__title">{task.title}</span>
                 {task.due_on ? <Badge>{formatDateLabel(task.due_on)}</Badge> : null}
               </div>
             ))}
@@ -147,9 +144,9 @@ export function ProjectDetailPage() {
       </section>
 
       <section aria-label="Journal">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 'var(--space-2)' }}>
-          <h2 className="text-sm text-muted">Journal ({(entries ?? []).length})</h2>
-          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+        <div className="section-head">
+          <h2 className="section-head__title">Journal ({(entries ?? []).length})</h2>
+          <div className="chip-row">
             <Button size="sm" variant="quiet" icon="plus" onClick={() => openCapture()}>
               Capture
             </Button>

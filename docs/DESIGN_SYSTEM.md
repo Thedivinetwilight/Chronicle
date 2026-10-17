@@ -49,12 +49,19 @@ durations to 0 via tokens.
 
 ## 3. Layout
 
+- The shell is an explicit CSS grid with named areas: sidebar (≥ 1024 px),
+  sticky header, and main. Grid placement is declared per region, never left
+  to auto-flow — a regression here once pushed main content below the fold.
 - < 640 px: single column, bottom tab bar (five destinations + capture),
-  dialogs are bottom sheets.
+  dialogs are bottom sheets with a grip; the header carries the brand.
 - 640–1023 px: same, centred dialogs.
-- ≥ 1024 px: persistent 260 px sidebar with the capture action; tab bar hidden.
+- ≥ 1024 px: persistent 260 px sidebar with the capture action; tab bar hidden;
+  the header names the current section instead of repeating the brand.
 - Reading views cap at 45 rem; lists cap at 64 rem.
 - Safe-area insets respected top and bottom (installed PWA).
+- Touch targets are tiered: primary controls ≥ 44 px on coarse pointers;
+  compact secondary targets (tag chips, row checks, small buttons) ≥ 32 px,
+  above WCAG 2.2 AA (24 px). The visual harness enforces both tiers.
 
 ## 4. Components
 
@@ -63,6 +70,18 @@ visible labels and hints, selects, switches, segmented controls, cards with
 header/body, lists, badges, tag chips, dialogs (focus-trapped, scroll-locked,
 Escape closes), toasts with optional action, empty/loading/error states,
 skeletons, and the rendered-Markdown view.
+
+Distinctive surfaces, all token-driven:
+
+- **Composer** (home): a borderless writing surface that gains an accent ring
+  on focus; the action and a quiet hint share its footer row.
+- **Section head**: uppercase 12 px label with an optional trailing link,
+  used by every list section on every page.
+- **Proposal** (capture review): head + body panels per proposed record, with
+  the verbatim original in a quoted **provenance** block.
+- **Row check**: circular complete-toggle at the start of task rows.
+- **State halo**: soft circle behind empty/error icons.
+- **Sheet grip**: 36×4 px bar that marks dismissible bottom sheets.
 
 ## 5. Accessibility rules (enforced in code and review)
 

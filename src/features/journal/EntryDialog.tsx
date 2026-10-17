@@ -98,14 +98,14 @@ export function EntryDialog({
         </>
       }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <div className="form-stack">
         <Field label="Title" hint="Optional — the first line is used when empty.">
           <TextInput value={title} onChange={setTitle} />
         </Field>
         <Field label="What happened?" required hint="Markdown is supported. Your words are stored exactly as written.">
           <TextArea value={body} onChange={setBody} rows={10} />
         </Field>
-        <div style={{ display: 'grid', gap: 'var(--space-3)', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+        <div className="grid-fields">
           <Field label="Type">
             <Select label="Type" value={type} onChange={setType} options={ENTRY_TYPE_OPTIONS} />
           </Field>
@@ -124,7 +124,7 @@ export function EntryDialog({
         <Field label="Tags" hint="Comma separated.">
           <TextInput value={tags} onChange={setTags} />
         </Field>
-        <div style={{ display: 'flex', gap: 'var(--space-5)', flexWrap: 'wrap' }}>
+        <div className="switch-row">
           <Switch checked={isPrivate} onChange={setPrivate} label="Private" description="Excluded from AI context and shared exports." />
           <Switch checked={pinned} onChange={setPinned} label="Pinned" description="Keeps this entry at the top of the journal." />
         </div>

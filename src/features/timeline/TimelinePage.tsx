@@ -79,7 +79,7 @@ export function TimelinePage() {
         </div>
       </header>
 
-      <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="page__controls">
         <Segmented
           label="Record kind"
           value={kindFilter}
@@ -92,7 +92,7 @@ export function TimelinePage() {
             { value: 'project', label: 'Projects' }
           ]}
         />
-        <div style={{ minWidth: 180 }}>
+        <div className="field" style={{ flex: '0 1 220px' }}>
           <Select
             label="Project"
             value={projectId}
@@ -122,14 +122,10 @@ export function TimelinePage() {
             return (
               <div className="timeline__day" key={event.id}>
                 {newDay ? <DayHeader date={day} timezone={timezone} /> : null}
-                <Link className="card list__item entrycard" to={event.path}>
+                <Link className="list__item entrycard" to={event.path}>
                   <div className="entrycard__title">
-                    <Icon
-                      name={KIND_ICON[event.kind]}
-                      size={15}
-                      style={{ display: 'inline', verticalAlign: '-2px', marginRight: 6 }}
-                    />
-                    {event.title}
+                    <Icon name={KIND_ICON[event.kind]} size={15} className="icon-inline" />
+                    <span>{event.title}</span>
                   </div>
                   <MetaLine>
                     <span>{KIND_LABEL[event.kind]}</span>

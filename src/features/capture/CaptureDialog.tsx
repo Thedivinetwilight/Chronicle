@@ -315,7 +315,7 @@ export function CaptureDialog() {
       }
     >
       {phase === 'compose' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="form-stack">
           <Field
             label="Your message"
             htmlFor="capture-input"
@@ -350,52 +350,50 @@ export function CaptureDialog() {
                 : 'Writes without asking. Corrections remain available afterwards; enable only if that suits you.'}
           </p>
           {error ? (
-            <p className="text-sm" role="alert" style={{ color: 'var(--color-danger)' }}>
-              {error} Your text is still here — nothing was lost.
+            <p className="notice notice--danger" role="alert">
+              <Icon name="alert" size={15} className="icon-inline" />
+              <span>
+                {error} Your text is still here — nothing was lost.
+              </span>
             </p>
           ) : null}
         </div>
       )}
 
       {phase === 'review' && proposal && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-          <div className="card">
-            <div className="card__header">
-              <span className="text-xs text-faint">Your words, kept verbatim</span>
+        <div className="form-stack">
+          <section className="proposal" aria-label="Your original words">
+            <div className="proposal__head">
+              <span className="section-head__title">Your words, kept verbatim</span>
               <Badge tone={proposal.analyzer === 'remote' ? 'warning' : 'neutral'}>
                 {proposal.analyzer === 'remote' ? 'model-assisted' : 'on-device'}
               </Badge>
             </div>
-            <div className="card__body">
-              <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', color: 'var(--color-text-muted)' }}>
-                {proposal.input}
-              </pre>
+            <div className="proposal__body">
+              <pre className="provenance">{proposal.input}</pre>
+              {notices.length > 0 ? (
+                <div className="form-stack form-stack--tight">
+                  {notices.map((notice) => (
+                    <p key={notice} className="text-sm text-muted">
+                      <Icon name="info" size={14} className="icon-inline" /> {notice}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
             </div>
-          </div>
+          </section>
 
-          {notices.length > 0 && (
-            <div className="card">
-              <div className="card__body text-sm" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                {notices.map((notice) => (
-                  <p key={notice}>
-                    <Icon name="info" size={14} /> {notice}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {questions.length > 0 && (
-            <div className="card">
-              <div className="card__header">
+          {questions.length > 0 ? (
+            <section className="proposal" aria-label="Questions from Chronicle">
+              <div className="proposal__head">
                 <h3 className="text-sm">Chronicle wants to confirm</h3>
               </div>
-              <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              <div className="proposal__body">
                 {questions.map((question) => (
-                  <div key={question.id}>
+                  <div key={question.id} className="form-stack form-stack--tight">
                     <p className="text-sm">{question.question}</p>
-                    {question.options.length > 0 && (
-                      <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginTop: 'var(--space-2)' }}>
+                    {question.options.length > 0 ? (
+                      <div className="chip-row">
                         {question.options.map((option) => (
                           <Button
                             key={option.label}
@@ -407,24 +405,24 @@ export function CaptureDialog() {
                           </Button>
                         ))}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            </section>
+          ) : null}
 
           {entryRecords.map((record) => (
-            <div className="card" key={record.key}>
-              <div className="card__header">
+            <section className="proposal" key={record.key} aria-label="Proposed journal entry">
+              <div className="proposal__head">
                 <h3 className="text-sm">Journal entry</h3>
                 <Switch
                   checked={record.include}
                   onChange={(next) => updateRecord(record.key, (item) => ({ ...item, include: next }))}
-                  label="Save this"
+                  label="Save this entry"
                 />
               </div>
-              <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              <div className="proposal__body">
                 <Field label="Title">
                   <TextInput
                     value={record.entry.title}
@@ -435,7 +433,7 @@ export function CaptureDialog() {
                     }
                   />
                 </Field>
-                <div style={{ display: 'grid', gap: 'var(--space-3)', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+                <div className="grid-fields">
                   <Field label="Type">
                     <Select
                       label="Entry type"
@@ -505,27 +503,27 @@ export function CaptureDialog() {
                   description="Private entries are excluded from AI context and from shared exports."
                 />
                 <p className="text-xs text-faint">
-                  Evidence level:{' '}
-                  <strong>{record.entry.evidence_level ?? 'concept'}</strong>
+                  Evidence level: <strong>{record.entry.evidence_level ?? 'concept'}</strong>
                   {record.reason ? ` — ${record.reason}` : ''}
                 </p>
               </div>
-            </div>
+            </section>
           ))}
 
-          {taskRecords.length > 0 && (
-            <div className="card">
-              <div className="card__header">
+          {taskRecords.length > 0 ? (
+            <section className="proposal" aria-label="Proposed tasks">
+              <div className="proposal__head">
                 <h3 className="text-sm">Tasks</h3>
               </div>
-              <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              <div className="proposal__body">
                 {taskRecords.map((record) => (
-                  <div key={record.key} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                  <div key={record.key} className="form-stack form-stack--tight">
+                    <div className="proposal__row">
                       <Switch
                         checked={record.include}
                         onChange={(next) => updateRecord(record.key, (item) => ({ ...item, include: next }))}
-                        label=""
+                        label={`Include task: ${record.task.title || 'untitled'}`}
+                        hiddenLabel
                       />
                       <TextInput
                         value={record.task.title ?? ''}
@@ -536,42 +534,45 @@ export function CaptureDialog() {
                         }
                       />
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <div className="proposal__row">
                       <label className="text-xs text-faint" htmlFor={`due-${record.key}`}>
                         Due
                       </label>
-                      <TextInput
-                        id={`due-${record.key}`}
-                        type="date"
-                        value={record.task.due_on ?? ''}
-                        onChange={(next) =>
-                          updateRecord(record.key, (item) =>
-                            item.kind === 'task'
-                              ? { ...item, task: { ...item.task, due_on: next || null, due_precision: next ? 'day' : 'unknown' } }
-                              : item
-                          )
-                        }
-                      />
+                      <div style={{ maxWidth: 180, flex: 1 }}>
+                        <TextInput
+                          id={`due-${record.key}`}
+                          type="date"
+                          value={record.task.due_on ?? ''}
+                          onChange={(next) =>
+                            updateRecord(record.key, (item) =>
+                              item.kind === 'task'
+                                ? { ...item, task: { ...item.task, due_on: next || null, due_precision: next ? 'day' : 'unknown' } }
+                                : item
+                            )
+                          }
+                        />
+                      </div>
                       {record.reason ? <span className="text-xs text-faint">{record.reason}</span> : null}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            </section>
+          ) : null}
 
-          {milestoneRecords.length > 0 && (
-            <div className="card">
-              <div className="card__header">
+          {milestoneRecords.length > 0 ? (
+            <section className="proposal" aria-label="Proposed milestones">
+              <div className="proposal__head">
                 <h3 className="text-sm">Milestones</h3>
               </div>
-              <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              <div className="proposal__body">
                 {milestoneRecords.map((record) => (
-                  <div key={record.key} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                  <div key={record.key} className="proposal__row">
                     <Switch
                       checked={record.include}
                       onChange={(next) => updateRecord(record.key, (item) => ({ ...item, include: next }))}
-                      label=""
+                      label={`Include milestone: ${record.milestone.title || 'untitled'}`}
+                      hiddenLabel
                     />
                     <TextInput
                       value={record.milestone.title ?? ''}
@@ -587,39 +588,47 @@ export function CaptureDialog() {
                   Milestones start as claims. Verification changes only when you attach evidence.
                 </p>
               </div>
-            </div>
-          )}
+            </section>
+          ) : null}
 
-          {issues.length > 0 && (
-            <div className="card">
-              <div className="card__body text-sm" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                {issues.map((issue) => (
-                  <p key={issue.message} className="text-muted">
-                    <Icon name={issue.severity === 'warning' ? 'alert' : 'info'} size={14} /> {issue.message}
-                  </p>
-                ))}
-              </div>
+          {issues.length > 0 ? (
+            <div className="notice notice--info" role="status">
+              <Icon name="info" size={15} className="icon-inline" />
+              <span>
+                {issues.map((issue) => issue.message).join(' ')}
+              </span>
             </div>
-          )}
+          ) : null}
 
-          {settings?.ai.enabled && settings.ai.provider === 'http' && (
+          {settings?.ai.enabled && settings.ai.provider === 'http' ? (
             <p className="text-xs text-faint">
               AI assistance is on. The model suggested structure only; your text was never rewritten.
             </p>
-          )}
+          ) : null}
         </div>
       )}
 
       {phase === 'saved' && result && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <p className="text-sm">
-            {result.created.entries.length > 0 && `Journal entry saved. `}
-            {result.created.tasks.length > 0 && `${result.created.tasks.length} task${result.created.tasks.length === 1 ? '' : 's'} added. `}
-            {result.created.milestones.length > 0 && `${result.created.milestones.length} milestone recorded. `}
-            {result.updated.length > 0 && `${result.updated.length} record updated. `}
-          </p>
+        <div className="form-stack">
+          <div className="proposal__row">
+            <div
+              className="state__halo"
+              style={{ background: 'var(--color-success-subtle)', color: 'var(--color-success)' }}
+            >
+              <Icon name="check" size={24} />
+            </div>
+            <div>
+              <h3>Saved to your archive</h3>
+              <p className="text-sm text-muted">
+                {result.created.entries.length > 0 && `Journal entry saved. `}
+                {result.created.tasks.length > 0 && `${result.created.tasks.length} task${result.created.tasks.length === 1 ? '' : 's'} added. `}
+                {result.created.milestones.length > 0 && `${result.created.milestones.length} milestone recorded. `}
+                {result.updated.length > 0 && `${result.updated.length} record updated. `}
+              </p>
+            </div>
+          </div>
           <Field label="Correct this capture" hint='For example: “That entry belongs to VERONICA instead.” or “Don’t create a separate task.”'>
-            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <div className="chip-row">
               <TextInput value={correction} onChange={setCorrection} placeholder="Say what should change…" />
               <Button onClick={() => void runCorrection()} busy={busy} disabled={!correction.trim()}>
                 Apply
@@ -628,7 +637,7 @@ export function CaptureDialog() {
           </Field>
           {correctionProposal && (
             <div className="card">
-              <div className="card__body text-sm" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              <div className="card__body text-sm form-stack form-stack--tight">
                 <p>Chronicle proposes:</p>
                 <ul style={{ margin: 0, paddingLeft: 'var(--space-4)' }}>
                   {correctionProposal.records.map((record) => (
@@ -643,7 +652,7 @@ export function CaptureDialog() {
                     </li>
                   ))}
                 </ul>
-                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                <div className="chip-row">
                   <Button variant="primary" size="sm" onClick={() => void applyCorrectionProposal()}>
                     Apply correction
                   </Button>

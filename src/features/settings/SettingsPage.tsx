@@ -116,7 +116,7 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="page" style={{ maxWidth: '44rem', margin: '0 auto' }}>
+    <div className="page page--narrow">
       <header className="page__header">
         <div className="page__title">
           <h1>Settings</h1>
@@ -128,7 +128,7 @@ export function SettingsPage() {
         <div className="card__header">
           <h2 className="text-sm">Appearance</h2>
         </div>
-        <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="card__body form-stack">
           <Field label="Theme">
             <Segmented
               label="Theme"
@@ -159,7 +159,7 @@ export function SettingsPage() {
         <div className="card__header">
           <h2 className="text-sm">Capture</h2>
         </div>
-        <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="card__body form-stack">
           <Field label="Default mode" hint="Quick saves directly when the reading is confident; review always asks first.">
             <Segmented
               label="Default capture mode"
@@ -188,7 +188,7 @@ export function SettingsPage() {
           <h2 className="text-sm">AI assistance (opt-in)</h2>
           <Badge tone={settings.ai.enabled ? 'warning' : 'neutral'}>{settings.ai.enabled ? 'enabled' : 'off'}</Badge>
         </div>
-        <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="card__body form-stack">
           <p className="text-sm text-muted">
             Capture works entirely on this device. A model can be consulted for structure suggestions
             only if you turn this on; your text is never rewritten by it, and nothing is sent while it
@@ -246,7 +246,7 @@ export function SettingsPage() {
           <h2 className="text-sm">Your data</h2>
           {stats ? <span className="text-xs text-faint">≈{(stats.bytesEstimate / 1024).toFixed(0)} KiB</span> : null}
         </div>
-        <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="card__body form-stack">
           {stats && (
             <p className="text-sm text-muted">
               {stats.projects} projects · {stats.entries} entries · {stats.milestones} milestones ·{' '}
@@ -254,7 +254,7 @@ export function SettingsPage() {
               {stats.oldestEntry ? ` · since ${formatDateLabel(stats.oldestEntry.slice(0, 10))}` : ''}
             </p>
           )}
-          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <div className="chip-row">
             <Button icon="download" onClick={() => void exportJson()}>
               Export archive (.json)
             </Button>
@@ -353,7 +353,7 @@ export function SettingsPage() {
               <h2 style={{ fontSize: 'var(--font-size-lg)' }}>Import preview</h2>
               <IconButton name="close" label="Cancel import" onClick={() => setImportPreview(null)} />
             </div>
-            <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <div className="card__body form-stack">
               <p className="text-sm">
                 The file holds {importPreview.value.records.projects.length} projects,{' '}
                 {importPreview.value.records.entries.length} entries, {importPreview.value.records.milestones.length}{' '}

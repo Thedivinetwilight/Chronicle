@@ -189,19 +189,22 @@ export function Switch({
   checked,
   onChange,
   label,
-  description
+  description,
+  hiddenLabel
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   label: string;
   description?: string;
+  /** Keep the label for assistive tech but hide it visually. */
+  hiddenLabel?: boolean;
 }) {
   const id = useId();
   return (
     <label className="switch" htmlFor={id}>
       <input id={id} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
       <span className="switch__track" aria-hidden="true" />
-      <span>
+      <span className={hiddenLabel ? 'sr-only' : undefined}>
         <span className="text-sm">{label}</span>
         {description ? (
           <>
@@ -268,7 +271,7 @@ export function TagChip({ tag, onClick }: { tag: string; onClick?: () => void })
 
 export function Row({ children, gap = 2 }: { children: ReactNode; gap?: number }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: `var(--space-${gap})`, flexWrap: 'wrap' }}>
+    <div className="chip-row" style={{ alignItems: 'center', gap: `var(--space-${gap})` }}>
       {children}
     </div>
   );
@@ -276,7 +279,7 @@ export function Row({ children, gap = 2 }: { children: ReactNode; gap?: number }
 
 export function Stack({ children, gap = 4 }: { children: ReactNode; gap?: number }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: `var(--space-${gap})` }}>{children}</div>
+    <div className="form-stack" style={{ gap: `var(--space-${gap})` }}>{children}</div>
   );
 }
 
@@ -284,23 +287,11 @@ export function Stack({ children, gap = 4 }: { children: ReactNode; gap?: number
 export function Details({ summary, children }: { summary: string; children: ReactNode }) {
   return (
     <details className="card">
-      <summary
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-2)',
-          padding: 'var(--space-3) var(--space-4)',
-          cursor: 'pointer',
-          fontSize: 'var(--font-size-sm)',
-          color: 'var(--color-text-muted)'
-        }}
-      >
-        <Icon name="chevron-down" size={16} />
+      <summary>
+        <Icon name="chevron-down" size={16} className="icon-inline" />
         {summary}
       </summary>
-      <div className="card__body" style={{ paddingTop: 0 }}>
-        {children}
-      </div>
+      <div className="card__body form-stack form-stack--tight">{children}</div>
     </details>
   );
 }

@@ -44,7 +44,7 @@ export function JournalPage() {
           <h1>Journal</h1>
           <span className="text-xs text-faint">{entries?.length ?? '…'} entries</span>
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+        <div className="chip-row">
           <Button variant="quiet" icon="plus" onClick={() => openCapture()}>
             Capture
           </Button>
@@ -54,8 +54,8 @@ export function JournalPage() {
         </div>
       </header>
 
-      <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-        <div style={{ minWidth: 150, flex: 1 }}>
+      <div className="page__controls">
+        <div className="field">
           <Select
             label="Project"
             value={projectId}
@@ -63,7 +63,7 @@ export function JournalPage() {
             options={[{ value: '', label: 'All projects' }, ...(projects ?? []).map((p) => ({ value: p.id, label: p.name }))]}
           />
         </div>
-        <div style={{ minWidth: 130, flex: 1 }}>
+        <div className="field">
           <Select
             label="Type"
             value={type}
@@ -71,7 +71,7 @@ export function JournalPage() {
             options={[{ value: 'all', label: 'All types' }, ...ENTRY_TYPE_OPTIONS]}
           />
         </div>
-        <div style={{ minWidth: 130, flex: 1 }}>
+        <div className="field">
           <Select
             label="Tag"
             value={tag}
@@ -96,11 +96,12 @@ export function JournalPage() {
         </EmptyState>
       ) : null}
 
+      {entries && entries.length > 0 ? (
       <div className="card list">
-        {(entries ?? []).map((entry) => (
+        {entries.map((entry) => (
           <Link className="list__item entrycard" key={entry.id} to={`/journal/${entry.id}`}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
-              <span className="entrycard__title">{entry.title || 'Untitled'}</span>
+            <div className="entrycard__title">
+              <span>{entry.title || 'Untitled'}</span>
               {entry.private ? (
                 <Badge>
                   <Icon name="lock" size={10} /> private
@@ -123,6 +124,7 @@ export function JournalPage() {
           </Link>
         ))}
       </div>
+      ) : null}
 
       <EntryDialog open={editing !== null} entry={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />
     </div>

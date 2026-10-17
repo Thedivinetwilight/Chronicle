@@ -69,6 +69,7 @@ export function Dialog({
         tabIndex={-1}
         style={wide ? { maxWidth: '52rem' } : undefined}
       >
+        <div className="dialog__grip" aria-hidden="true" />
         <div className="dialog__header">
           <h2 style={{ fontSize: 'var(--font-size-lg)' }}>{title}</h2>
           <IconButton name="close" label="Close" onClick={onClose} />

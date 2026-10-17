@@ -46,7 +46,7 @@ export function EntryPage() {
     <div className="page">
       <header className="page__header">
         <div className="page__title">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <div className="page__actions" style={{ gap: 'var(--space-2)' }}>
             <IconButton name="chevron-left" label="Back to journal" onClick={() => navigate('/journal')} />
             <h1>{entry.title || 'Untitled'}</h1>
           </div>
@@ -57,28 +57,30 @@ export function EntryPage() {
             {entry.occurred_source !== 'user' ? <span>· date from {entry.occurred_source}</span> : null}
             {entry.private ? (
               <Badge>
-                <Icon name="lock" size={10} /> private
+                <Icon name="lock" size={10} className="icon-inline" /> private
               </Badge>
             ) : null}
           </MetaLine>
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+        <div className="page__actions">
           <IconButton name="edit" label="Edit entry" onClick={() => setEditing(true)} />
           <IconButton name="trash" label="Delete entry" onClick={() => setConfirmDelete(true)} />
         </div>
       </header>
 
       {project && (
-        <Link to={`/projects/${project.id}`} className="tagchip" style={{ alignSelf: 'flex-start' }}>
-          <Icon name="folder" size={13} /> {project.name}
-        </Link>
+        <div>
+          <Link to={`/projects/${project.id}`} className="tagchip">
+            <Icon name="folder" size={13} className="icon-inline" /> {project.name}
+          </Link>
+        </div>
       )}
 
       <article className="card">
         <div className="card__body">
           <MarkdownView source={entry.body} />
           {entry.tags.length > 0 && (
-            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginTop: 'var(--space-4)' }}>
+            <div className="chip-row" style={{ marginTop: "var(--space-4)" }}>
               {entry.tags.map((tag) => (
                 <Link key={tag} to={`/search?q=${encodeURIComponent(tag)}`} className="tagchip">
                   #{tag}
@@ -89,8 +91,8 @@ export function EntryPage() {
         </div>
       </article>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-        <span className="text-xs text-faint">Evidence level</span>
+      <div className="entrycard__meta">
+        <span>Evidence level</span>
         <Badge tone={entry.evidence_level === 'concept' ? 'neutral' : 'accent'}>{entry.evidence_level}</Badge>
         <span className="text-xs text-faint">
           {entry.evidence.length > 0 ? `${entry.evidence.length} reference${entry.evidence.length === 1 ? '' : 's'} attached` : 'no evidence attached yet'}
@@ -99,16 +101,16 @@ export function EntryPage() {
 
       {tasks.length > 0 && (
         <section aria-label="Tasks from this entry">
-          <h2 className="text-sm text-muted" style={{ marginBottom: 'var(--space-2)' }}>
-            Tasks from this entry
-          </h2>
+          <div className="section-head">
+            <h2 className="section-head__title">Tasks from this entry</h2>
+          </div>
           <div className="card list">
             {tasks.map((task) => (
-              <div className="list__item" key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <div className="list__item row-task" key={task.id}>
                 <button
                   type="button"
-                  className="iconbtn"
-                  style={{ width: 28, height: 28 }}
+                  className="row-check"
+                  aria-pressed={task.status === 'done'}
                   aria-label={`Mark “${task.title}” done`}
                   onClick={async () => {
                     await store.updateTask(task.id, { status: task.status === 'done' ? 'todo' : 'done' });
@@ -116,7 +118,7 @@ export function EntryPage() {
                 >
                   <Icon name={task.status === 'done' ? 'check' : 'task'} size={15} />
                 </button>
-                <span className="text-sm" style={{ flex: 1, textDecoration: task.status === 'done' ? 'line-through' : undefined }}>
+                <span className="text-sm" style={{ textDecoration: task.status === 'done' ? 'line-through' : undefined }}>
                   {task.title}
                 </span>
                 {task.due_on ? <Badge>{formatDateLabel(task.due_on)}</Badge> : null}
@@ -128,9 +130,7 @@ export function EntryPage() {
 
       {entry.source.original_input && entry.source.original_input !== entry.body && (
         <Details summary="Original capture (verbatim)">
-          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', color: 'var(--color-text-muted)' }}>
-            {entry.source.original_input}
-          </pre>
+          <pre className="provenance">{entry.source.original_input}</pre>
           <p className="text-xs text-faint" style={{ marginTop: 'var(--space-3)' }}>
             Suggested by {entry.source.analyzer ?? 'Chronicle'} · capture {entry.source.capture_id?.slice(0, 8) ?? '—'}. The
             entry body above is yours; this block is what you first wrote.

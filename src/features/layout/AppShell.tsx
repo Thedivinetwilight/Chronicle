@@ -4,7 +4,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { Icon, type IconName } from '../../ui/Icon';
 import { useChronicle } from '../../state/ChronicleContext';
 import { CaptureDialog } from '../capture/CaptureDialog';
@@ -22,6 +22,16 @@ const NAV: NavItem[] = [
   { to: '/timeline', label: 'Timeline', icon: 'history' },
   { to: '/search', label: 'Search', icon: 'search' }
 ];
+
+/** The header names the section on wide screens; the brand carries phones. */
+function sectionTitle(pathname: string): string {
+  const exact = NAV.find((item) => (item.to === '/' ? pathname === '/' : pathname.startsWith(item.to)));
+  if (exact) return exact.label;
+  if (pathname.startsWith('/projects/')) return 'Projects';
+  if (pathname.startsWith('/journal/')) return 'Journal';
+  if (pathname.startsWith('/settings')) return 'Settings';
+  return 'Chronicle';
+}
 
 function Brand() {
   return (
@@ -43,6 +53,7 @@ function Brand() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { openCapture, toasts, dismissToast } = useChronicle();
+  const location = useLocation();
 
   return (
     <div className="shell">
@@ -74,11 +85,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <header className="shell__header">
-        <span style={{ display: 'none' }} className="shell__brand-desktop">
+        <span className="shell__brand-mobile">
           <Brand />
         </span>
-        <span className="shell__title" aria-hidden="true" />
-        <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+        <span className="shell__title">{sectionTitle(location.pathname)}</span>
+        <div className="shell__actions">
           <NavLink to="/settings" className="iconbtn" aria-label="Settings" title="Settings">
             <Icon name="settings" size={20} />
           </NavLink>
@@ -117,7 +128,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {item.action.label}
               </button>
             ) : null}
-            <button type="button" className="iconbtn" aria-label="Dismiss" onClick={() => dismissToast(item.id)} style={{ width: 32, height: 32 }}>
+            <button type="button" className="iconbtn" aria-label="Dismiss" onClick={() => dismissToast(item.id)}>
               <Icon name="close" size={15} />
             </button>
           </div>

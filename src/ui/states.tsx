@@ -23,7 +23,9 @@ export function EmptyState({
 }) {
   return (
     <div className="state">
-      <Icon name={icon} size={28} className="state__icon" />
+      <div className="state__halo">
+        <Icon name={icon} size={24} />
+      </div>
       <div className="state__title">{title}</div>
       {children ? <div className="text-sm measure">{children}</div> : null}
       {action}
@@ -42,7 +44,9 @@ export function ErrorState({
 }) {
   return (
     <div className="state" role="alert">
-      <Icon name="alert" size={28} className="state__icon" />
+      <div className="state__halo">
+        <Icon name="alert" size={24} />
+      </div>
       <div className="state__title">{title}</div>
       {message ? <div className="text-sm measure">{message}</div> : null}
       {onRetry ? (
@@ -66,9 +70,9 @@ export function LoadingState({ label = 'Loading' }: { label?: string }) {
 /** Placeholder rows that keep the layout stable while a query resolves. */
 export function SkeletonList({ rows = 3 }: { rows?: number }) {
   return (
-    <div className="card" aria-hidden="true" style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+    <div className="card card__body form-stack" aria-hidden="true">
       {Array.from({ length: rows }, (_, index) => (
-        <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        <div key={index} className="form-stack form-stack--tight">
           <div className="skeleton" style={{ height: 14, width: `${58 - index * 6}%` }} />
           <div className="skeleton" style={{ height: 12, width: `${82 - index * 4}%` }} />
         </div>
