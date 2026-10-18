@@ -12,3 +12,6 @@ capture engine and provider so first paint never pays for them.
 **Consequences:** current initial JS ≈ 158 KiB gzip; the budget is a target we
 measure, not a claim.
 
+> **Update 2026-10-18:** the capture engine is no longer lazy-loaded; see
+> [0011](0011-capture-engine-bundled-write-watchdog.md). The 250 KiB budget itself
+> is unchanged and still measured on every build.

@@ -8,6 +8,7 @@
  * - Report storage failures instead of pretending a write succeeded.
  */
 
+import Dexie from 'dexie';
 import {
   createEntry as buildEntry,
   createMilestone as buildMilestone,
@@ -101,6 +102,22 @@ const LAST_COMMIT_KEY = 'capture:last';
 /** Cap on how much data a single query pulls before it is filtered in memory. */
 const SCAN_LIMIT = 2000;
 const SEARCH_CANDIDATE_LIMIT = 400;
+
+/**
+ * A capture write transaction that is still running after this long is
+ * considered wedged and gets aborted (atomically — see captureWriter).
+ * 30s is far beyond any real commit on this schema; it exists so the UI can
+ * never hang forever on a storage layer that stopped responding.
+ */
+let writeTxWatchdogMs = 30_000;
+
+/**
+ * Test-only knob: shrink the watchdog horizon so the abort-and-rollback path
+ * can be exercised deterministically with real timers.
+ */
+export function setWriteTxWatchdogMsForTests(ms: number): void {
+  writeTxWatchdogMs = ms;
+}
 
 export const DEFAULT_SETTINGS: AppSettings = {
   schema_version: 1,
@@ -1109,7 +1126,46 @@ export class DexieChronicleStore implements ChronicleStore {
     const db = this.require();
     return {
       transaction: async <T>(work: () => Promise<T>): Promise<T> =>
-        db.transaction('rw', [db.entries, db.tasks, db.milestones, db.projects, db.searchIndex], work),
+        db.transaction(
+          'rw',
+          [db.entries, db.tasks, db.milestones, db.projects, db.searchIndex],
+          async () => {
+            // Liveness watchdog. IndexedDB can wedge on mobile (storage
+            // pressure, suspended tabs, browser bugs); without this the
+            // transaction promise never settles and the UI stays busy forever.
+            //
+            // Aborting is *safe* here: `tx.abort()` rolls the whole IndexedDB
+            // transaction back atomically, so a watchdog abort can never
+            // produce a partial commit, and capture ids act as idempotency
+            // keys, so a retry after an abort cannot duplicate records.
+            //
+            // The race is necessary because Dexie only settles the
+            // transaction promise once the scope function settles — a scope
+            // wedged on a never-settling promise would swallow a bare
+            // `tx.abort()`. Rejecting the scope ourselves guarantees the
+            // caller always gets a settle: an AbortError, which the UI
+            // reports as a visible, actionable failure.
+            const tx = Dexie.currentTransaction;
+            let timer: ReturnType<typeof setTimeout> | null = null;
+            const wedged = tx
+              ? new Promise<never>((_resolve, reject) => {
+                  timer = setTimeout(() => {
+                    tx.abort();
+                    const failure = new Error(
+                      `Transaction aborted by the capture watchdog after ${writeTxWatchdogMs}ms.`
+                    );
+                    failure.name = 'AbortError';
+                    reject(failure);
+                  }, writeTxWatchdogMs);
+                })
+              : null;
+            try {
+              return wedged ? await Promise.race([work(), wedged]) : await work();
+            } finally {
+              if (timer !== null) clearTimeout(timer);
+            }
+          }
+        ),
       getEntry: async (id) => (await db.entries.get(id)) ?? null,
       getTask: async (id) => (await db.tasks.get(id)) ?? null,
       getMilestone: async (id) => (await db.milestones.get(id)) ?? null,

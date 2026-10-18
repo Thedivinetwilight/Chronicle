@@ -29,8 +29,33 @@ import type {
 import type { EntryType, IsoDate, JournalEntry, Milestone } from '../../domain/types';
 import { localDateIso, zonedTimeToUtc } from '../../domain/time';
 import { normalizeTags } from '../../domain/text';
+// The capture engine ships inside the main bundle on purpose: saving must
+// never depend on a runtime network fetch. A lazily-imported analyzer chunk
+// whose request stalls (flaky mobile network, proxy, service-worker edge
+// cases) leaves `await import()` pending forever — no timeout, no rejection —
+// which froze the Save button with a spinner and no error to show. Capture is
+// a core feature (§28), so its code is loaded with the app, not on demand.
+import { analyzeCapture } from '../../domain/capture/analyzer';
+import { selectProvider } from '../../domain/capture/provider';
 
 type Phase = 'compose' | 'working' | 'review' | 'saved';
+
+/**
+ * Optional stage tracer for field diagnosis. Enable by setting
+ * `localStorage['chronicle:debug'] = 'capture'` in the browser console.
+ * Logs stage names and elapsed milliseconds only — never capture text,
+ * API keys, or record contents.
+ */
+function traceStage(stage: string, startedAt?: number, detail?: string): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    if (localStorage.getItem('chronicle:debug') !== 'capture') return;
+  } catch {
+    return;
+  }
+  const elapsed = startedAt !== undefined ? ` +${Math.round(performance.now() - startedAt)}ms` : '';
+  console.debug(`[chronicle:capture] ${stage}${elapsed}${detail ? ` (${detail})` : ''}`);
+}
 
 interface UndoSnapshot {
   created: { kind: 'entries' | 'tasks' | 'milestones'; id: string }[];
@@ -84,17 +109,27 @@ export function CaptureDialog() {
 
   const projectList = useRef<{ id: string; name: string }[]>([]);
 
+  // Guards every user-triggered capture action. Repeat taps while a save is
+  // in flight are ignored instead of racing a second pipeline run.
+  const busyRef = useRef(false);
+
   const analyzeAndRoute = useCallback(async () => {
     const text = input.trim();
     if (!text) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setError(null);
+    const startedAt = performance.now();
+    let stage = startedAt;
+    const mark = (name: string) => {
+      traceStage(name, stage);
+      stage = performance.now();
+    };
+    mark('save:start');
     try {
-      const [{ analyzeCapture }, { selectProvider }] = await Promise.all([
-        import('../../domain/capture/analyzer'),
-        import('../../domain/capture/provider')
-      ]);
       const context = await store.captureContext();
+      mark('capture-context:done');
       projectList.current = context.projects.map((project) => ({ id: project.id, name: project.name }));
       projectOptions.current = [
         { value: '', label: 'No project' },
@@ -116,6 +151,7 @@ export function CaptureDialog() {
       const analysed = provider
         ? await provider.analyze(text, context)
         : { proposal: analyzeCapture({ input: text, context }), usedRemote: false, notices: [] };
+      mark(analysed.usedRemote ? 'analyze:done(remote)' : 'analyze:done(local)');
 
       const found = analysed.proposal;
       const providerNotices = 'notices' in analysed ? (analysed.notices as string[]) : [];
@@ -128,12 +164,16 @@ export function CaptureDialog() {
         setProposal(found);
         setRecords(found.records.map((record) => ({ ...record })));
         setPhase('review');
+        mark('review:shown');
       } else {
         await commit(found);
+        mark('commit:done');
       }
     } catch (cause) {
+      traceStage('save:error', startedAt, cause instanceof Error ? cause.name : 'unknown');
       setError(cause instanceof Error ? cause.message : 'Capture failed.');
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }, [input, mode, settings, store]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -142,8 +182,11 @@ export function CaptureDialog() {
     async (nextProposal: CaptureProposal) => {
       setBusy(true);
       setError(null);
+      const startedAt = performance.now();
+      traceStage('commit:start');
       try {
         const commitResult = await store.commitCapture(nextProposal);
+        traceStage('commit:done', startedAt, `ok=${String(commitResult.ok)} duplicate=${String(commitResult.duplicate)}`);
         if (!commitResult.ok) {
           setError(commitResult.errors.map((item) => item.message).join(' '));
           setPhase('compose');
@@ -179,7 +222,18 @@ export function CaptureDialog() {
           }
         );
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : 'Saving failed.');
+        // An AbortError here means the storage watchdog rolled a wedged
+        // transaction back (see dexieStore.captureWriter). Aborts are atomic,
+        // so nothing was partially saved and the text is still in the composer.
+        const aborted = cause instanceof Error && cause.name === 'AbortError';
+        traceStage('commit:error', startedAt, cause instanceof Error ? cause.name : 'unknown');
+        setError(
+          aborted
+            ? 'Saving was taking too long, so Chronicle stopped and rolled the write back.'
+            : cause instanceof Error
+              ? cause.message
+              : 'Saving failed.'
+        );
         setPhase('compose');
       } finally {
         setBusy(false);
@@ -212,29 +266,40 @@ export function CaptureDialog() {
 
   const applyCorrectionsAndCommit = useCallback(async () => {
     if (!proposal) return;
-    const next: CaptureProposal = { ...proposal, records: records.map((record) => ({ ...record })) };
-    // Snapshot records that will be updated so Undo can restore them.
-    const previous: UndoSnapshot['previous'] = [];
-    for (const record of next.records) {
-      if (record.kind !== 'update' || !record.include) continue;
-      const target = record.update.target_id;
-      const entry = await store.getEntry(target);
-      if (entry) previous.push({ kind: 'entries', record: entry });
-      else {
-        const milestone = await store.getMilestone(target);
-        if (milestone) previous.push({ kind: 'milestones', record: milestone });
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      const next: CaptureProposal = { ...proposal, records: records.map((record) => ({ ...record })) };
+      // Snapshot records that will be updated so Undo can restore them.
+      const previous: UndoSnapshot['previous'] = [];
+      for (const record of next.records) {
+        if (record.kind !== 'update' || !record.include) continue;
+        const target = record.update.target_id;
+        const entry = await store.getEntry(target);
+        if (entry) previous.push({ kind: 'entries', record: entry });
+        else {
+          const milestone = await store.getMilestone(target);
+          if (milestone) previous.push({ kind: 'milestones', record: milestone });
+        }
       }
+      undoRef.current = { created: [], previous };
+      await commit(next);
+    } catch (cause) {
+      traceStage('review-commit:error', undefined, cause instanceof Error ? cause.name : 'unknown');
+      setError(cause instanceof Error ? cause.message : 'Saving failed.');
+      setPhase('compose');
+    } finally {
+      busyRef.current = false;
     }
-    undoRef.current = { created: [], previous };
-    await commit(next);
   }, [proposal, records, store, commit]);
 
   const runCorrection = useCallback(async () => {
     const text = correction.trim();
     if (!text) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     try {
-      const { analyzeCapture } = await import('../../domain/capture/analyzer');
       const context = await store.captureContext();
       const found = analyzeCapture({ input: text, context });
       const hasUpdate = found.records.some((record) => record.kind === 'update');
@@ -248,22 +313,35 @@ export function CaptureDialog() {
         });
         setCorrectionProposal(found);
       }
+    } catch (cause) {
+      traceStage('correction:error', undefined, cause instanceof Error ? cause.name : 'unknown');
+      setError(cause instanceof Error ? cause.message : 'That correction could not be applied.');
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }, [correction, store, toast]);
 
   const applyCorrectionProposal = useCallback(async () => {
     if (!correctionProposal) return;
-    undoRef.current = { created: [], previous: [] };
-    for (const record of correctionProposal.records) {
-      if (record.kind !== 'update') continue;
-      const entry = await store.getEntry(record.update.target_id);
-      if (entry) undoRef.current.previous.push({ kind: 'entries', record: entry });
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      undoRef.current = { created: [], previous: [] };
+      for (const record of correctionProposal.records) {
+        if (record.kind !== 'update') continue;
+        const entry = await store.getEntry(record.update.target_id);
+        if (entry) undoRef.current.previous.push({ kind: 'entries', record: entry });
+      }
+      await commit(correctionProposal);
+      setCorrectionProposal(null);
+      setCorrection('');
+    } catch (cause) {
+      traceStage('correction-commit:error', undefined, cause instanceof Error ? cause.name : 'unknown');
+      setError(cause instanceof Error ? cause.message : 'Saving failed.');
+    } finally {
+      busyRef.current = false;
     }
-    await commit(correctionProposal);
-    setCorrectionProposal(null);
-    setCorrection('');
   }, [correctionProposal, store, commit]);
 
   const updateRecord = useCallback((key: string, patch: (record: ProposedRecord) => ProposedRecord) => {

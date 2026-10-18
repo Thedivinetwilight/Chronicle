@@ -3,7 +3,7 @@
  * calendar arithmetic and presentation.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   addLocalDays,
   addMonths,
@@ -108,8 +108,17 @@ describe('zoned conversions', () => {
   });
 
   it('derives today from the active zone', () => {
-    const now = new Date('2026-10-17T20:00:00.000Z');
-    expect(todayIso(UTC)).toBe(localDateIso(now, UTC));
+    // Pin the clock: this assertion must hold on any day the suite runs.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-17T20:00:00.000Z'));
+    try {
+      // Same instant, different zones: still the 17th in UTC, already the
+      // 18th in IST — "today" is zone-derived, never hard-coded.
+      expect(todayIso(UTC)).toBe('2026-10-17');
+      expect(todayIso(IST)).toBe('2026-10-18');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

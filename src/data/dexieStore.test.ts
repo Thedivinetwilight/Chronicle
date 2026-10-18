@@ -8,7 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ChronicleDatabase, getDatabase, setDatabase } from './db';
-import { DEFAULT_SETTINGS, DexieChronicleStore } from './dexieStore';
+import { DEFAULT_SETTINGS, DexieChronicleStore, setWriteTxWatchdogMsForTests } from './dexieStore';
 import { analyzeCapture } from '../domain/capture/analyzer';
 import { serializeArchive } from '../domain/export/archive';
 import { localDateIso } from '../domain/time';
@@ -711,5 +711,33 @@ describe('housekeeping', () => {
     expect(await store.listProjects({ includeDeleted: true })).toHaveLength(0);
     expect(await store.listEntries({ includeDeleted: true })).toHaveLength(0);
     expect(await store.search({ text: 'jarvis' })).toHaveLength(0);
+  });
+});
+
+describe('capture write watchdog', () => {
+  it('aborts a wedged capture transaction atomically instead of hanging forever', async () => {
+    const context = await store.captureContext();
+    const proposal = analyzeCapture({ input: 'Watchdog probe entry.', context });
+
+    // Wedge the storage layer mid-commit: the duplicate-key lookup the writer
+    // performs inside the transaction never settles, exactly like an
+    // unresponsive IndexedDB on a pressured mobile browser.
+    const db = getDatabase(dbName);
+    const originalGet = db.entries.get.bind(db.entries);
+    (db.entries as unknown as { get: () => Promise<never> }).get = () => new Promise(() => {});
+
+    setWriteTxWatchdogMsForTests(250);
+    try {
+      // Past the watchdog horizon the wedged transaction must be aborted …
+      await expect(store.commitCapture(proposal)).rejects.toThrow(/abort/i);
+    } finally {
+      setWriteTxWatchdogMsForTests(30_000);
+      db.entries.get = originalGet as typeof db.entries.get;
+    }
+
+    // … and the abort is a full atomic rollback: no partial record, no
+    // last-commit marker, so a retry cannot duplicate anything.
+    expect(await store.listEntries()).toHaveLength(0);
+    expect(await store.getLastCommit()).toBeNull();
   });
 });

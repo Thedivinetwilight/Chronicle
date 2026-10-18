@@ -2,7 +2,7 @@
 
 `npm run verify` = `typecheck` + `test` + `contrast` + `build`.
 
-## 1. Suite overview (331 tests, 13 files)
+## 1. Suite overview (338 tests, 14 files)
 
 | Area | File | Covers |
 | --- | --- | --- |
@@ -16,8 +16,9 @@
 | Import | `domain/import/import.test.ts` | malformed files, checksum-before-repair, merge/replace planning, round trips |
 | Capture units | `domain/capture/{temporal,understanding}.test.ts` | date parsing incl. DST and timezones, association, intent, tasks, milestones, tags, titles |
 | Capture acceptance | `domain/capture/acceptance.test.ts` | **the 15 scenarios of spec §28.15**, end to end through commit |
-| Persistence | `data/dexieStore.test.ts` | CRUD, revisions, tombstones + purge sweep, search index lifecycle, timeline, capture commits, settings, portability, stats |
+| Persistence | `data/dexieStore.test.ts` | CRUD, revisions, tombstones + purge sweep, search index lifecycle, timeline, capture commits, settings, portability, stats, write-transaction watchdog abort + atomic rollback |
 | UI smoke | `src/app.test.tsx` | boot, blocked-storage state, capture dialog save + failure, journal list, search results |
+| Capture save regression | `src/features/capture/captureFlow.test.tsx` | the Android-hang bug class (ADR 0011): quick + review saves, storage failure visible with text kept and busy cleared, zero network I/O with AI off, unreachable AI falls back locally, double-tap saves once, persistence across journal reopen and simulated reload |
 
 Run: `npm test` (Vitest, jsdom, `fake-indexeddb` for real IndexedDB semantics).
 
@@ -59,8 +60,9 @@ Run: `npm test` (Vitest, jsdom, `fake-indexeddb` for real IndexedDB semantics).
   meet WCAG 2.1 (4.5 text, 3.0 UI). Fails the build otherwise.
 - `npm run build`: rolldown/vite production build; initial JS gzip total is
   reported per chunk. Budget: **≤ 250 KiB** gzipped initial JavaScript.
-  Current: ~158 KiB (index 44 + react 82 + storage 32 + runtime 0.4); the
-  capture engine (~19 KiB) loads lazily on first capture.
+  Current: ~180 KiB (index 66 + react 82 + storage 32 + runtime 0.4). The
+  capture engine is bundled statically since ADR 0011 so saving never waits
+  on a runtime fetch.
 
 ## 4. Real-browser verification (`scripts/visual/harness.mjs`)
 
@@ -80,6 +82,15 @@ A headless-Chromium harness exercises the built app (see
 
 Screenshots are verification artefacts kept outside Git; re-run the harness
 to regenerate them on any machine with a browser.
+
+## 4b. Field diagnostics for capture
+
+`localStorage['chronicle:debug'] = 'capture'` enables a stage tracer in the
+capture dialog: stage names and elapsed milliseconds (`save:start`,
+`capture-context:done`, `analyze:done(local|remote)`, `commit:start/done`,
+error names) printed via `console.debug`. It never logs capture text, API
+keys, or record contents. Added with the ADR 0011 fix so a stuck save on a
+real device can be pinpointed from a remote debug session.
 
 ## 5. Known gaps (honest list)
 

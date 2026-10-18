@@ -84,8 +84,10 @@ platform reports nothing usable.
 
 `vite-plugin-pwa` generates a Workbox service worker (precache + cache-first
 same-origin runtime caching, navigate fallback to `index.html`). The capture
-engine is code-split (`analyzer`/`provider` chunks) so the initial bundle
-stays small; it loads on first capture and is then cached.
+engine (`analyzer`/`provider`) ships inside the main bundle on purpose: the
+save path must never depend on a runtime network fetch (ADR 0011 — a stalled
+lazy-chunk request once froze saving with no error). Routes stay code-split,
+and the initial JS remains ~28 % under the 250 KiB gzip budget.
 
 ## 7. What is deliberately absent
 

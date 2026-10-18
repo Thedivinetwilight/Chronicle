@@ -12,5 +12,6 @@ Short, dated records of choices that shaped Chronicle. Status reflects V0.1.
 | [0006](0006-soft-delete-and-purge.md) | Tombstones for deletes, explicit purge with reference sweep | accepted |
 | [0007](0007-derived-search-index.md) | Search over a derived index table, not raw scans | accepted |
 | [0008](0008-no-dependency-defaults.md) | Hand-rolled Markdown, validation and icons instead of dependencies | accepted |
-| [0009](0009-bundle-budget.md) | 250 KiB gzip initial-JS budget with lazy capture engine | accepted |
+| [0009](0009-bundle-budget.md) | 250 KiB gzip initial-JS budget with lazy capture engine | accepted (lazy capture engine superseded by 0011) |
 | [0010](0010-pwa-before-native.md) | PWA first; at most one native wrapper, later | accepted |
+| [0011](0011-capture-engine-bundled-write-watchdog.md) | Capture engine ships in the main bundle; write transactions get a liveness watchdog | accepted |
