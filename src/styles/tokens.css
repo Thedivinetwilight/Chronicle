@@ -1,0 +1,184 @@
+/* ===========================================================================
+   Chronicle design tokens (§04, §21)
+   ---------------------------------------------------------------------------
+   One vocabulary, two themes. Every colour the interface uses is declared
+   here; component styles only ever reference a token, so a theme change is a
+   data change and contrast can be verified mechanically
+   (see `npm run contrast`).
+
+   Principles:
+   - Restrained, paper-like light theme; deep neutral dark theme. No gradients,
+     no glass, no decorative colour. Colour carries meaning, not decoration.
+   - The accent is an ink blue, used for actions and focus — never for large
+     surfaces.
+   - Borders are near-transparent neutral lines; elevation comes from a
+     single subtle shadow token, not from stacking them.
+   =========================================================================== */
+
+:root {
+  /* -- type scale (px) ---------------------------------------------------- */
+  --font-size-2xs: 11px;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-md: 15px;
+  --font-size-lg: 17px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
+  /* The one display size: the home heading. Fluid so phones stay calm. */
+  --font-size-display: clamp(26px, 7vw, 32px);
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  --tracking-tight: -0.021em;
+  --tracking-label: 0.07em;
+
+  --line-height-tight: 1.25;
+  --line-height-body: 1.55;
+  --line-height-reading: 1.7;
+
+  /* The reading column: long journal text stays comfortable on any screen. */
+  --measure: 72ch;
+  --reading-width: 45rem;
+
+  /* -- spacing (4px base) -------------------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* -- radii --------------------------------------------------------------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-full: 999px;
+
+  /* -- motion -------------------------------------------------------------- */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 200ms;
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* -- layout -------------------------------------------------------------- */
+  --sidebar-width: 260px;
+  --header-height: 52px;
+  --tabbar-height: 58px;
+  --touch-target: 44px;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* -- z-order ------------------------------------------------------------- */
+  --z-header: 20;
+  --z-sidebar: 30;
+  --z-modal: 60;
+  --z-toast: 70;
+}
+
+/* ===========================================================================
+   Light theme — warm paper, ink text
+   =========================================================================== */
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --color-bg: #fbfaf8;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f5f3ef;
+  --color-surface-raised: #ffffff;
+
+  /* `border` is decorative hairline; `border-strong` outlines controls and
+     therefore must clear 3:1 (WCAG 1.4.11). */
+  --color-border: rgba(28, 25, 23, 0.1);
+  --color-border-strong: #8a837c;
+  --color-border-focus: #3d5a80;
+
+  --color-text: #1c1917;
+  --color-text-muted: #57534e;
+  --color-text-faint: #6f6a64;
+  --color-text-inverse: #fbfaf8;
+
+  --color-accent: #3d5a80;
+  --color-accent-hover: #32506f;
+  --color-accent-subtle: rgba(61, 90, 128, 0.09);
+  --color-on-accent: #ffffff;
+
+  --color-success: #3f7d58;
+  --color-success-subtle: rgba(63, 125, 88, 0.12);
+  --color-warning: #8a5f27;
+  --color-warning-subtle: rgba(138, 95, 39, 0.12);
+  --color-danger: #a34a3f;
+  --color-danger-subtle: rgba(163, 74, 63, 0.1);
+
+  --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.06), 0 1px 1px rgba(28, 25, 23, 0.04);
+  --shadow-md: 0 4px 12px rgba(28, 25, 23, 0.08), 0 1px 3px rgba(28, 25, 23, 0.06);
+  --shadow-lg: 0 12px 32px rgba(28, 25, 23, 0.12), 0 2px 8px rgba(28, 25, 23, 0.08);
+
+  --color-scrim: rgba(28, 25, 23, 0.36);
+  --color-selection: rgba(61, 90, 128, 0.18);
+}
+
+/* ===========================================================================
+   Dark theme — deep neutral, one luminous accent
+   =========================================================================== */
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-bg: #131316;
+  --color-surface: #1a1a1f;
+  --color-surface-subtle: #212128;
+  --color-surface-raised: #232329;
+
+  --color-border: rgba(245, 243, 239, 0.1);
+  --color-border-strong: #6b665f;
+  --color-border-focus: #8fb0d9;
+
+  --color-text: #f2f0ed;
+  --color-text-muted: #b8b3ab;
+  --color-text-faint: #99938b;
+  --color-text-inverse: #131316;
+
+  --color-accent: #8fb0d9;
+  --color-accent-hover: #a6c1e2;
+  --color-accent-subtle: rgba(143, 176, 217, 0.14);
+  --color-on-accent: #14202e;
+
+  --color-success: #7fbf9a;
+  --color-success-subtle: rgba(127, 191, 154, 0.16);
+  --color-warning: #d9a85c;
+  --color-warning-subtle: rgba(217, 168, 92, 0.16);
+  --color-danger: #e08a7c;
+  --color-danger-subtle: rgba(224, 138, 124, 0.16);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+
+  --color-scrim: rgba(0, 0, 0, 0.55);
+  --color-selection: rgba(143, 176, 217, 0.28);
+}
+
+/* ===========================================================================
+   Reduced motion (§21): motion is a courtesy, never a requirement
+   =========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+:root[data-reduce-motion='true'] {
+  --duration-fast: 0ms;
+  --duration-base: 0ms;
+  --duration-slow: 0ms;
+}

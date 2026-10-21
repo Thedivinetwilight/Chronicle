@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Chronicle — a quiet, offline-first record of your projects, journal, experiments, and discoveries."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#fbfaf8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#131316" media="(prefers-color-scheme: dark)" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Chronicle" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>Chronicle</title>
+    <script>
+      // Applied before first paint to prevent a theme flash. Reads a local
+      // preference only; never touches the network and never runs remote code.
+      (function () {
+        try {
+          var raw = localStorage.getItem('chronicle:theme');
+          var theme = raw ? JSON.parse(raw).value : 'system';
+          var dark =
+            theme === 'dark' ||
+            ((theme === 'system' || !theme) &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
+    <style>
+      /* Minimal boot styling; the design system loads with the app bundle. */
+      html { background: #fbfaf8; }
+      html[data-theme='dark'] { background: #131316; }
+      #boot {
+        position: fixed; inset: 0; display: grid; place-items: center;
+        font: 400 13px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        letter-spacing: 0.02em;
+        color: #8a837c;
+      }
+      html[data-theme='dark'] #boot { color: #7c7a80; }
+      @media (prefers-reduced-motion: no-preference) {
+        #boot span { animation: boot-fade 1.6s ease-in-out infinite; }
+      }
+      @keyframes boot-fade { 0%, 100% { opacity: 0.45 } 50% { opacity: 1 } }
+    </style>
+  </head>
+  <body>
+    <div id="root"><div id="boot"><span>Opening Chronicle…</span></div></div>
+    <noscript>Chronicle stores your records locally in this browser and requires JavaScript to run.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
