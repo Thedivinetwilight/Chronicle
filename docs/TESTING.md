@@ -1,8 +1,8 @@
-# Testing — Chronicle V0.1
+# Testing — Chronicle V0.2
 
 `npm run verify` = `typecheck` + `test` + `contrast` + `build`.
 
-## 1. Suite overview (338 tests, 14 files)
+## 1. Suite overview (429 tests, 19 files)
 
 | Area | File | Covers |
 | --- | --- | --- |
@@ -19,6 +19,12 @@
 | Persistence | `data/dexieStore.test.ts` | CRUD, revisions, tombstones + purge sweep, search index lifecycle, timeline, capture commits, settings, portability, stats, write-transaction watchdog abort + atomic rollback |
 | UI smoke | `src/app.test.tsx` | boot, blocked-storage state, capture dialog save + failure, journal list, search results |
 | Capture save regression | `src/features/capture/captureFlow.test.tsx` | the Android-hang bug class (ADR 0011): quick + review saves, storage failure visible with text kept and busy cleared, zero network I/O with AI off, unreachable AI falls back locally, double-tap saves once, persistence across journal reopen and simulated reload |
+| Life persistence | `data/lifeStore.test.ts` | schema migration keeps V0.1 rows intact; chapters/paths/trips/collections CRUD; filing in both directions; a chapter with no dates stays listed after a save (regression, see §5); chapter delete keeps experiences; deleted targets cannot be filed into; suggestion stored as a suggestion and refused as confirmed; pair de-duplication both ways; self-links and dangling targets rejected; link removal on target delete |
+| Map domain | `domain/lifeMap/layout.test.ts` | real records only, node kinds and shapes, undated nodes labelled, deleted records omitted, filtering by chapter/person/kind, hit testing, fit-to-content bounds, label length |
+| Share projection | `domain/share/preview.test.ts` | private items excluded unless opted in, narrowest-audience rule, booking reference/PNR/coordinate stripping, omissions reported, `published:false` and `localOnly:true`, no mutation of the archive |
+| Archive round trip (life) | `domain/import/import.test.ts`, `domain/export/export.test.ts` | life records exported only when present, accepted under `records` or a sibling `life` block, validated before write |
+| Archive loop (UI) | `src/features/archiveLoop.test.tsx` | Today quick capture persists privately and rejects empty drafts; repeat taps save once; `/journal/new` stores an unknown date honestly and lands on the record; a Today draft survives into the full editor; chapter create survives a reload; chapter delete leaves experiences untouched; the map shows an honest empty state then the real node via the outline; the share preview states that nothing is published and has no publish control |
+| Routes | `src/routes.test.tsx` | every destination renders an `h1`, logs no console error, and an unknown path redirects home |
 
 Run: `npm test` (Vitest, jsdom, `fake-indexeddb` for real IndexedDB semantics).
 
@@ -101,3 +107,35 @@ real device can be pinpointed from a remote debug session.
 - PWA *install* prompts and standalone launch are verified by manifest/service
   worker inspection and offline rendering, not by an install flow on a phone.
 - The AI HTTP provider is tested with injected fetch stubs, not a live model.
+
+## 5. V0.2 additions and the bugs they were written against
+
+Three defects were found by writing UI tests against the real provider, and all
+three now have regression coverage:
+
+1. **Chapters vanished after saving.** `listChapters` used
+   `db.chapters.orderBy('start_date')`. Dexie skips rows whose index key is
+   `null`, so every chapter without a start date was stored but never listed —
+   the user would create an era and watch it disappear. Fixed by `toArray()` +
+   explicit sort; `lifeStore.test.ts` ("lists a chapter whose dates are
+   unknown") fails if `orderBy` returns.
+2. **Form labels were not associated with their controls.** `Field` rendered a
+   `<label>` with no `htmlFor` unless a caller remembered to pass one — no
+   caller did — so every text input in the app was unnamed for screen readers
+   while looking correct. `Field` now injects the id and the hint's
+   `aria-describedby` into its single control child.
+3. **Two "Save" buttons on Today.** The page composer and the capture dialog
+   both render a primary Save. The UI is correct (they are in different
+   regions) but the tests had to scope themselves with `within(dialog)`; the
+   shell keeps a single accessible name per region.
+
+### What these tests deliberately do not claim
+
+- **No real browser has run in this environment.** There is no Chromium,
+  Firefox or WebKit available and `cdn.playwright.dev` is unreachable, so no
+  test here is evidence of visual layout, real touch gestures, pinch zoom,
+  service-worker behaviour or PWA installability. jsdom verifies structure,
+  state and persistence only. Playwright/axe coverage on a device matrix
+  remains the outstanding verification gap (see the milestone report).
+- Contrast is verified by `npm run contrast` (72 token pairings, WCAG 2.1 text
+  4.5:1 and UI 3:1), not by eye.

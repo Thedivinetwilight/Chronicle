@@ -20,7 +20,7 @@ export default defineConfig({
       name: 'Chronicle',
       short_name: 'Chronicle',
       description:
-        'A quiet, offline-first record of your projects, journal, experiments, and discoveries.',
+        'Chronicle — a private, offline-first life archive. Capture what happened, keep it in your own words, and see how it connects. Nothing is published.',
       id: '/',
       start_url: '/',
       scope: '/',

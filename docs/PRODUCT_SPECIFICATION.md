@@ -1,14 +1,30 @@
-# Product specification — Chronicle V0.1
+# Product specification — Chronicle V0.2
 
-Status: **implemented** unless marked otherwise. Every statement here maps to
-code in `src/` and, in most cases, to a test in `src/**/*.test.ts(x)`.
+Status: **implemented** unless marked **(planned)**. Every unimplemented
+statement is labelled, and nothing in the UI presents a planned feature as a
+working control. Every implemented statement maps to code in `src/` and, in
+most cases, to a test in `src/**/*.test.ts(x)`.
 
 ## 1. Purpose
 
-Chronicle records a person's engineering and personal journey as a durable,
-private archive. It optimises for *capture friction* (one sentence is enough),
-*honesty* (claims are never upgraded on your behalf) and *longevity* (open
-formats, reversible edits, offline operation).
+Chronicle is a private life archive with optional, deliberate sharing. The loop
+it is built around:
+
+> capture an experience → keep it in your own archive → connect it to the rest
+> of your life → share it only if you decide to.
+
+The archive must be valuable with zero posting. Private journaling is a
+first-class product, not a privacy setting.
+
+It optimises for *capture friction* (one sentence is enough), *honesty*
+(dates, people, places, emotions and relationships are never invented; claims
+are never upgraded on your behalf; suggestions are labelled and need approval),
+*ownership* (export, backup, restore and delete are real, understandable
+operations) and *longevity* (open formats, reversible edits, offline
+operation).
+
+Reflective, never competitive: no scores, streaks, ranks, leaderboards or
+"you're behind" framing anywhere.
 
 ## 2. Personas & jobs-to-be-done
 
@@ -103,3 +119,54 @@ Input → **understanding** → **proposal** → **validation** → **commit**.
 
 Sync between devices, attachments, rich-text editing, sharing, native shells,
 and any server component. See ROADMAP.md.
+
+## 7. V0.2 — the archive loop
+
+### 7.1 Areas and their status
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| **Today** | implemented | Greeting, fast private capture, today's own words, recent experiences, chapter/path/trip shortcuts. No metrics. The day recap is *assembled from the user's records only* and says so. |
+| **Capture** | implemented (text) | Quick path saves in one step; review path shows and lets you correct proposed metadata; failures keep the text and clear the busy state; repeat taps save once; nothing reports success before IndexedDB confirms. **Photos (planned)**, **voice (planned)**. |
+| **Journal & timeline** | implemented | Search, filters, detail, edit, revisions, jump to map. |
+| **Life Map** | implemented (MVP) | Real records only, seven node kinds, pan/zoom/pinch/keyboard, outline alternative, detail panel with source records, suggestions review queue. |
+| **Chapters** | implemented | Name, description, optional dates *or* a date hint, accent, archive, tombstone delete that keeps experiences. |
+| **Paths** | implemented | Title, description, start/hoped-for dates, four respectful states, state note, linked experiences. Never infers completion. |
+| **Trips** | implemented (partial) | Name, dates, linked places, private details field hidden by default, experiences found by mentioning the trip's places. **Tickets/photos/recaps (planned)**. |
+| **Collections** | implemented | Hand-curated albums; nothing added automatically. |
+| **Sharing & profile** | **preview only** | A local projection with sensitive content stripped, exclusions listed, and no publish control. Accounts, circles, public posts, audience and reshare controls are **planned**. |
+| **Roadmap** | implemented | In-app, honest list of what is not built and what it would require. |
+| **Year in review** | **planned** | Not built; no recap is generated. |
+| **Memory resurfacing** | **planned** | Not built; when built it must ship with hide controls for topics, people, places and dates, and no notifications. |
+| **Voice capture** | **planned** | Nothing records audio in this build. |
+
+### 7.2 The privacy model as implemented
+
+1. Every life record is created with `visibility: 'private'`.
+2. A missing or unreadable visibility resolves to private when read.
+3. There is no network path for archive content in this build: no accounts, no
+   sync, no telemetry, no AI call unless the user configures one with a key
+   that is never stored.
+4. The share preview runs locally, excludes private items unless explicitly
+   included *for the preview only*, strips booking references/PNRs/coordinates,
+   reports each omission, and hard-codes `published: false`.
+5. Travel details (confirmation numbers, booking references) live in a single
+   `sensitive_notes` field, masked on screen until revealed, never included in a
+   preview.
+6. Places store names the user typed. Chronicle does not collect coordinates,
+   does not geolocate and cannot draw an exact home location.
+
+### 7.3 Truthfulness rules in the UI
+
+- Unknown dates are stored as unknown (`occurred_precision: 'unknown'`) rather
+  than defaulted to today, and the editor offers "I don't know when this
+  happened" explicitly.
+- The map draws an "undated" cluster instead of inventing a position in time.
+- Path states are the user's own words, with copy that treats paused and changed
+  as legitimate: *"The plan moved somewhere else. That is part of the story, not
+  a failure."*
+- Trip membership is shown as *"found by matching the place names you recorded
+  against your own text"* — described as a reading aid, not a link Chronicle
+  created.
+- Deleting a chapter, path or collection says plainly that the experiences are
+  kept.

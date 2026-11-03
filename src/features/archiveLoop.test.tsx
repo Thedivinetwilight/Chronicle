@@ -16,7 +16,7 @@ import { MemoryRouter } from 'react-router-dom';
 import Dexie from 'dexie';
 import { App } from '../App';
 import { ChronicleProvider } from '../state/ChronicleContext';
-import { DATABASE_NAME, setDatabase } from '../data/db';
+import { DATABASE_NAME, getDatabase, setDatabase } from '../data/db';
 import { DexieChronicleStore } from '../data/dexieStore';
 
 function renderAt(path: string) {
@@ -30,10 +30,15 @@ function renderAt(path: string) {
 }
 
 /** A store over whatever database the provider is currently using. */
-async function freshStore(): Promise<DexieChronicleStore & { close(): void }> {
+async function freshStore(): Promise<DexieChronicleStore> {
   const store = new DexieChronicleStore();
   await store.init();
-  return store as DexieChronicleStore & { close(): void };
+  return store;
+}
+
+/** Release the shared handle so the next render starts clean. */
+function closeDatabase(): void {
+  getDatabase().close();
 }
 
 beforeEach(async () => {
@@ -116,7 +121,7 @@ describe('chapters', () => {
     const chapter = await store.createChapter({ name: 'A period I am done with' });
     const entry = await store.createEntry({ title: 'Kept experience', body: 'Still here afterwards.' });
     await store.setEntryRelations(entry.id, { chapter_ids: [chapter.id] });
-    store.close();
+    closeDatabase();
 
     renderAt(`/chapters/${chapter.id}`);
     fireEvent.click(await screen.findByRole('button', { name: /Delete chapter/i }));
@@ -135,8 +140,43 @@ describe('chapters', () => {
       // emptied) but its entry is untouched and still typed.
       expect(await reloaded.getChapter(chapter.id)).toBeNull();
       expect((await reloaded.listChapters({}))).toHaveLength(0);
-      reloaded.close();
+      closeDatabase();
     });
+  });
+});
+
+describe('the full editor', () => {
+  it('is reachable at /journal/new, keeps uncertain dates honest, and lands on the saved record', async () => {
+    renderAt('/journal/new');
+
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(/What happened\?/i), {
+      target: { value: 'Somewhere around the monsoon, I moved cities.' }
+    });
+    // The user does not know the date: that must be stored as unknown, not today.
+    fireEvent.click(within(dialog).getByLabelText(/I don.t know when this happened/i));
+    fireEvent.click(within(dialog).getByRole('button', { name: /Save experience/i }));
+
+    // Saving navigates to the record itself.
+    expect(await screen.findByText(/Somewhere around the monsoon, I moved cities\./)).toBeTruthy();
+
+    const reloaded = await freshStore();
+    const [saved] = await reloaded.listEntries();
+    expect(saved?.occurred_precision).toBe('unknown');
+    expect(saved?.private).toBe(true);
+    closeDatabase();
+  });
+
+  it('carries a Today draft into the full editor instead of discarding it', async () => {
+    renderAt('/');
+    const composer = await screen.findByLabelText(/Write something that happened/i);
+    fireEvent.change(composer, { target: { value: 'A thought worth keeping.' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add details/i }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect((within(dialog).getByLabelText(/What happened\?/i) as HTMLTextAreaElement).value).toBe(
+      'A thought worth keeping.'
+    );
   });
 });
 

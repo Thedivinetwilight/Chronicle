@@ -11,6 +11,7 @@ import { ProjectsPage } from './features/projects/ProjectsPage';
 import { ProjectDetailPage } from './features/projects/ProjectDetailPage';
 import { JournalPage } from './features/journal/JournalPage';
 import { EntryPage } from './features/journal/EntryPage';
+import { NewEntryPage } from './features/journal/NewEntryPage';
 import { TimelinePage } from './features/timeline/TimelinePage';
 import { SearchPage } from './features/search/SearchPage';
 import { SettingsPage } from './features/settings/SettingsPage';
@@ -89,6 +90,7 @@ export function App() {
         <Route path="/share-preview" element={<SharePreviewPage />} />
         <Route path="/roadmap" element={<RoadmapPage />} />
         <Route path="/journal" element={<JournalPage />} />
+        <Route path="/journal/new" element={<NewEntryPage />} />
         <Route path="/journal/:entryId" element={<EntryPage />} />
         <Route path="/timeline" element={<TimelinePage />} />
         <Route path="/search" element={<SearchPage />} />

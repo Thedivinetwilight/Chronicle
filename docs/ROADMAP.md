@@ -4,7 +4,27 @@ V0.1 is the local, honest core. Everything below is ordered by the project's
 priority rule: data integrity & privacy → correctness → core UX → performance
 → maintainability → extras.
 
-## V0.2 — depth of record
+## V0.2 — the life archive (shipped in this build)
+
+Delivered: the experience/chapter/path/place/trip/collection model, the
+relationship graph with labelled suggestions, the Life Map MVP over real
+persisted records with an accessible outline equivalent, the private-by-default
+visibility model, a local share *preview* that strips sensitive content and
+publishes nothing, and the Today / Chapters / Paths / Trips / Collections
+screens. See `DATA_MODEL.md` §V0.2 and ADRs 0012–0014.
+
+Not delivered, and labelled as such inside the app (see the in-app Roadmap
+screen, which mirrors this list):
+
+- **Photos and attachments.** No blob storage yet; experiences are text-first.
+- **Publishing, circles, public posts.** No accounts and no server, therefore no
+  publish control exists anywhere in the UI.
+- **Year in review** and **memory resurfacing.** Not built; the latter is
+  deliberately quiet when it is built (no notifications, no streaks).
+- **Voice capture.** Nothing records audio.
+- **Sync.** Export is still the only way data leaves a device.
+
+## V0.2.1 — depth of record
 
 - Attachments stored in OPFS/IndexedDB blobs, referenced by evidence entries
   with checksums; included in exports as a sidecar folder.
@@ -43,6 +63,9 @@ Sync is deliberately a *protocol* decision, not a vendor decision.
 
 ## Explicitly not planned
 
-- Accounts, social features, dashboards, streaks, analytics of any kind.
+- Streaks, scores, leaderboards, rank or any competitive framing of a life.
+- Engagement notifications, re-engagement campaigns, "you're behind" messaging.
+- Analytics that read journal text, or any logging of private content.
+- Dashboards. The archive is read by browsing, not by measuring.
 - Server-side AI. Models are consulted on-device-initiated, opt-in, and only
   for structure suggestions.

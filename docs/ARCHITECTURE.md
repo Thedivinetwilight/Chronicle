@@ -1,17 +1,20 @@
-# Architecture — Chronicle V0.1
+# Architecture — Chronicle V0.2
 
 ## 1. Layers
 
 ```
 src/
   domain/        pure TypeScript: types, time, text, markdown, validation,
-                 search scoring, export/import, and the capture engine
+                 search scoring, export/import, the capture engine, and the
+                 life-archive rules (lifeMap layout + suggestions, share
+                 projection)
   data/          persistence: Dexie schema (db.ts), the ChronicleStore port
                  (store.ts), and its IndexedDB implementation (dexieStore.ts)
   state/         React context + live-query hooks over the store
   ui/            design-system primitives (icons, controls, dialogs, states)
-  features/      screens: layout, home, capture, projects, journal, timeline,
-                 search, settings, milestones
+  features/      screens: layout, home (Today), capture, journal, chapters,
+                 paths, trips, collections, lifemap, share, roadmap, projects,
+                 timeline, search, settings, milestones
   styles/        tokens.css + global.css
 ```
 
@@ -95,3 +98,47 @@ No state library (React context + `useLiveQuery` suffice), no CSS framework,
 no icon font, no Markdown library (the renderer is escape-first and 200
 lines), no schema library (validation is explicit and repair-oriented), no
 router data loaders. Each absence is recorded in `docs/DECISIONS/`.
+
+## 7. The archive layer (V0.2)
+
+The life archive sits *inside* the existing layers rather than beside them; no
+layer was rewritten, and `domain/` still imports nothing from React, Dexie or
+the browser.
+
+```
+domain/lifeMap/layout.ts     records  →  nodes + edges + bounds   (pure)
+domain/lifeMap/suggestions.ts records →  candidate links          (pure)
+domain/share/preview.ts      records  →  SharePreview             (pure)
+                    ↓
+data/store.ts                the same ChronicleStore port, extended with
+                             chapter/path/place/person/trip/collection/link
+                             methods; `lifeMapSource()` assembles the input
+data/dexieStore.ts           IndexedDB implementation, schema v2
+                    ↓
+state/hooks.ts               useChapters, useChapterEntries, usePaths,
+                             useTrips, useLifeMapSource, useMemoryLinks …
+                    ↓
+features/lifemap             canvas + outline + detail panel + review queue
+features/{chapters,paths,    screens over those hooks
+  trips,collections,share}
+```
+
+Two consequences worth stating explicitly:
+
+- **The map is rebuildable.** `lifeMapSource()` reads canonical tables; the
+  layout is a pure function of that input. There is no map-specific table, no
+  cached geometry and nothing to repair if the view is wrong — deleting a
+  record removes its node on the next query.
+- **Sharing is a projection, not a publication path.** `buildSharePreview` runs
+  entirely in `domain/`, takes records by value and returns plain data. It has
+  no network call to reach and no storage to write to, which is what makes the
+  "nothing is published" claim verifiable rather than a promise.
+
+### Navigation architecture
+
+The shell defines three nav groups in one place (`features/layout/AppShell.tsx`)
+and derives phone behaviour from them: the archive loop (Today, Life map,
+Journal, Chapters, Paths) is the primary group, gathering (Trips, Collections,
+Share preview) is the second, and everything else is third. Phones show five
+tabs plus the always-present capture action and a "More" dialog — a real dialog,
+not a clipped menu, so nothing is unreachable at 320 px.

@@ -94,3 +94,48 @@ Distinctive surfaces, all token-driven:
 6. Colour is never the only carrier of meaning (badges carry text).
 7. Headings form a hierarchy per page; landmarks (`nav`, `main`, `aside`) are
    labelled.
+
+---
+
+## 6. The Life Map palette and shape system (V0.2)
+
+The map needed a second palette: it draws records as *kinds*, and a kind must be
+readable at a glance without becoming decoration. The rules were:
+
+1. **Two tokens per kind.** Every kind owns an `--map-ink-*` (the label and the
+   stroke) and a `--map-fill-*` (the node body). Both themes define the full
+   set; no kind falls back to a generic colour.
+2. **Contrast is part of the contract.** All seven ink-on-own-fill pairs are in
+   `scripts/check-contrast.mjs` alongside `--map-edge` and the canvas text, so a
+   future palette tweak that looks fine but reads badly fails `npm run contrast`
+   before it ships. Two of the first twelve draft pairings failed exactly this
+   way (edges at 2.3:1) and were darkened rather than waved through.
+3. **Kind is never colour alone.** Each kind also has a distinct silhouette —
+   chapter = diamond, experience = circle, path = circle with a ring, place =
+   pin, person = circle with head and shoulders, trip = circle with a cross,
+   collection = square — and every node renders a text label on the canvas.
+4. **Warm, calm canvas.** `--map-canvas` / `--map-canvas-deep` sit close to the
+   page background with a faint `--map-grid`, so the map reads as a quieter
+   surface rather than a dashboard. There are no scores, ranks or progress bars
+   anywhere in the palette.
+5. **Uncertainty has its own token.** `--map-uncertain` marks a node whose date
+   or place is unknown; it is used with a text note, never as the sole signal.
+
+### Map interaction contract (implemented in `LifeMapCanvas.tsx`)
+
+| Input | Behaviour |
+| --- | --- |
+| Drag (mouse or one finger) | pans |
+| Wheel | pans (page scroll is preserved by not hijacking without a modifier) |
+| Ctrl/⌘ + wheel | zooms |
+| Two-finger pinch | zooms |
+| Arrow keys | pan; Shift+arrows pan further |
+| `+` / `-` / `0` | zoom in, zoom out, reset |
+| Escape | clears the selection |
+| Buttons | zoom in/out, fit to content, reset — always on screen, ≥ 44 px |
+
+The map fits its content on first measure and on resize, but stops doing so
+once the user has moved the view — re-fitting under someone's hands is the
+classic map annoyance. With `prefers-reduced-motion` (or the app's own
+reduce-motion setting) all transitions are removed; position changes still
+apply instantly.

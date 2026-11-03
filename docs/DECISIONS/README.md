@@ -1,6 +1,6 @@
 # Architecture decision records
 
-Short, dated records of choices that shaped Chronicle. Status reflects V0.1.
+Short, dated records of choices that shaped Chronicle. Status reflects V0.2.
 
 | ADR | Title | Status |
 | --- | --- | --- |
@@ -15,3 +15,6 @@ Short, dated records of choices that shaped Chronicle. Status reflects V0.1.
 | [0009](0009-bundle-budget.md) | 250 KiB gzip initial-JS budget with lazy capture engine | accepted (lazy capture engine superseded by 0011) |
 | [0010](0010-pwa-before-native.md) | PWA first; at most one native wrapper, later | accepted |
 | [0011](0011-capture-engine-bundled-write-watchdog.md) | Capture engine ships in the main bundle; write transactions get a liveness watchdog | accepted |
+| [0012](0012-life-archive-layer.md) | The life archive is an additive layer over the V0.1 record core | accepted |
+| [0013](0013-suggestions-require-approval.md) | Suggestions are labelled, stored as suggestions, and require approval | accepted |
+| [0014](0014-life-map-derived-view.md) | The life map is a derived, self-contained SVG view | accepted |
