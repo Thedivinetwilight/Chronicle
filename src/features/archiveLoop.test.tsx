@@ -10,7 +10,7 @@
  * bits that no assertion depends on.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Dexie from 'dexie';
@@ -94,6 +94,34 @@ describe('Today', () => {
     renderAt('/journal');
     await waitFor(() => expect(screen.getAllByText(/Only once, please\./).length).toBeGreaterThan(0));
     expect(screen.getAllByText(/Only once, please\./).length).toBe(1);
+  });
+});
+
+describe('failure handling', () => {
+  it('keeps the draft and explains the failure when the write fails', async () => {
+    renderAt('/');
+    const composer = await screen.findByLabelText(/Write something that happened/i);
+    const draft = 'This must not be lost if storage fails.';
+    fireEvent.change(composer, { target: { value: draft } });
+
+    // Break the write path the way a full disk or a revoked permission would.
+    const spy = vi
+      .spyOn(DexieChronicleStore.prototype, 'createEntry')
+      .mockRejectedValueOnce(new Error('QuotaExceededError'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toMatch(/not saved/i);
+    expect(alert.textContent).toMatch(/still here/i);
+    // The words are still in the box, and Save is available again.
+    expect((composer as HTMLTextAreaElement).value).toBe(draft);
+    expect(screen.getByRole('button', { name: 'Save' }).hasAttribute('disabled')).toBe(false);
+
+    // The next attempt works: a failure is not a dead end.
+    spy.mockRestore();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(/Saved to your archive/i)).toBeTruthy();
   });
 });
 
