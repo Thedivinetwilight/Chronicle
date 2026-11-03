@@ -20,6 +20,7 @@ import { ChaptersPage, ChapterPage } from './features/chapters/ChaptersPage';
 import { PathsPage, PathPage } from './features/paths/PathsPage';
 import { TripsPage, TripPage } from './features/trips/TripsPage';
 import { CollectionsPage, CollectionPage } from './features/collections/CollectionsPage';
+import { PlacesPage } from './features/places/PlacesPage';
 import { SharePreviewPage } from './features/share/SharePreviewPage';
 import { RoadmapPage } from './features/roadmap/RoadmapPage';
 import { LoadingState } from './ui/states';
@@ -85,6 +86,7 @@ export function App() {
         <Route path="/paths/:pathId" element={<PathPage />} />
         <Route path="/trips" element={<TripsPage />} />
         <Route path="/trips/:tripId" element={<TripPage />} />
+        <Route path="/places" element={<PlacesPage />} />
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/collections/:collectionId" element={<CollectionPage />} />
         <Route path="/share-preview" element={<SharePreviewPage />} />

@@ -38,6 +38,7 @@ const PRIMARY: NavItem[] = [
 
 const GATHER: NavItem[] = [
   { to: '/trips', label: 'Trips', icon: 'plane' },
+  { to: '/places', label: 'Places & people', icon: 'pin' },
   { to: '/collections', label: 'Collections', icon: 'archive' },
   { to: '/share-preview', label: 'Share preview', icon: 'shield', hint: 'Preview only — nothing is published' }
 ];

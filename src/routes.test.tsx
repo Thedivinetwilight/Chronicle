@@ -21,6 +21,7 @@ const ROUTES: [path: string, heading: RegExp][] = [
   ['/chapters', /chapters/i],
   ['/paths', /paths/i],
   ['/trips', /trips/i],
+  ['/places', /places/i],
   ['/collections', /collections/i],
   ['/share-preview', /share preview/i],
   ['/roadmap', /roadmap/i],

@@ -460,6 +460,8 @@ function recordPath(node: LifeNode): string | null {
   if (node.kind === 'path') return `/paths/${node.id}`;
   if (node.kind === 'trip') return `/trips/${node.id}`;
   if (node.kind === 'collection') return `/collections/${node.id}`;
+  // Places and people share one management screen; neither has a detail page.
+  if (node.kind === 'place' || node.kind === 'person') return '/places';
   return null;
 }
 

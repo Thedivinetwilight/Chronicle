@@ -102,13 +102,33 @@ describe('sensitive travel details', () => {
   });
 
   it('lists places by name only — never coordinates', () => {
-    const place = createPlace({ name: 'Kyoto', region: 'Japan' }, context);
+    const place = createPlace({ name: 'Kyoto', region: 'Japan', visibility: 'public' }, context);
     const trip = createTrip({ name: 'Japan', place_ids: [place.id], visibility: 'public' }, context);
     const preview = buildSharePreview(archive({ places: [place], trips: [trip] }), { tripIds: [trip.id] });
     expect(preview.items[0]!.placeNames).toEqual(['Kyoto']);
     // Item content carries names and dates only — no coordinate pairs. The
     // envelope's own timestamps are not archive content and are excluded here.
     expect(JSON.stringify(preview.items)).not.toMatch(/-?\d{1,3}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}/);
+  });
+
+  it('withholds the name of a private place even when the trip is shareable', () => {
+    // A place name is private information in its own right: a home town, a
+    // clinic, a street. A public trip must not carry a private place into the
+    // preview, and the withholding must be visible to the user.
+    const privatePlace = createPlace({ name: 'The clinic on Mount Road' }, context);
+    const publicPlace = createPlace({ name: 'Kyoto', visibility: 'public' }, context);
+    const trip = createTrip(
+      { name: 'Japan', place_ids: [privatePlace.id, publicPlace.id], visibility: 'public' },
+      context
+    );
+
+    const preview = buildSharePreview(archive({ places: [privatePlace, publicPlace], trips: [trip] }), {
+      tripIds: [trip.id]
+    });
+    const item = preview.items[0]!;
+    expect(item.placeNames).toEqual(['Kyoto']);
+    expect(JSON.stringify(preview.items)).not.toContain('Mount Road');
+    expect(item.omitted.join(' ')).toMatch(/place you keep private/i);
   });
 
   it('removes identity- and bank-looking tags', () => {

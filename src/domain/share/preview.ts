@@ -143,7 +143,25 @@ export function buildSharePreview(input: SharePreviewInput, selection: SharePrev
   const items: SharePreviewItem[] = [];
 
   const liveEntries = input.entries.filter((entry) => !entry.deleted_at);
-  const placeName = (id: string): string | null => input.places.find((place) => place.id === id && !place.deleted_at)?.name ?? null;
+
+  /**
+   * Resolve a place name for the projection.
+   *
+   * A place's *name* is itself private information — "Home", a street, a
+   * clinic, the town someone grew up in. A trip being shareable must not drag a
+   * private place's name into the preview, so a private place is withheld
+   * unless private material was explicitly included, and the withholding is
+   * reported rather than done silently.
+   */
+  const placeName = (id: string, omitted: string[]): string | null => {
+    const place = input.places.find((candidate) => candidate.id === id && !candidate.deleted_at);
+    if (!place) return null;
+    if (place.visibility === 'private' && !includePrivate) {
+      omitted.push('A place you keep private has been withheld.');
+      return null;
+    }
+    return place.name;
+  };
 
   const wants = (ids: string[] | undefined, id: string): boolean => Boolean(ids?.includes(id));
 
@@ -249,7 +267,9 @@ export function buildSharePreview(input: SharePreviewInput, selection: SharePrev
         datePrecision: trip.date_precision,
         visibility: visible,
         tags: [],
-        placeNames: trip.place_ids.map((id) => placeName(id)).filter((name): name is string => Boolean(name)),
+        placeNames: trip.place_ids
+          .map((id) => placeName(id, omitted))
+          .filter((name): name is string => Boolean(name)),
         peopleNames: [],
         omitted
       });

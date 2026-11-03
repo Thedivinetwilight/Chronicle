@@ -202,6 +202,28 @@ describe('map', () => {
   });
 });
 
+describe('map detail', () => {
+  it('opens a real record from a node and lists its source', async () => {
+    const store = await freshStore();
+    const chapter = await store.createChapter({ name: 'A named era' });
+    const entry = await store.createEntry({ title: 'An experience in the era', body: 'Body text.' });
+    await store.setEntryRelations(entry.id, { chapter_ids: [chapter.id] });
+    closeDatabase();
+
+    renderAt('/map');
+
+    // The outline is the deterministic route in: it exposes every node as a
+    // real control, then the detail panel offers the underlying record.
+    fireEvent.click(await screen.findByRole('button', { name: /outline/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /An experience in the era/i }));
+
+    const open = await screen.findByRole('button', { name: /Open experience/i });
+    fireEvent.click(open);
+
+    expect(await screen.findByRole('heading', { level: 1, name: /An experience in the era/i })).toBeTruthy();
+  });
+});
+
 describe('share preview', () => {
   it('states plainly that nothing is published and excludes private records by default', async () => {
     renderAt('/');
