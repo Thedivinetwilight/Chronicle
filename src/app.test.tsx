@@ -136,3 +136,64 @@ describe('journal and search', () => {
     expect(screen.getAllByRole('button', { name: /Capture something/i }).length).toBeGreaterThan(0);
   });
 });
+
+/**
+ * The mobile tab bar must expose every destination. A seven-child grid with six
+ * declared columns silently wrapped "More" onto a second row *outside* the
+ * fixed bar, so it was unreachable on a phone — and because the bar is fixed,
+ * the horizontal-overflow check never saw it. These assertions fail if the
+ * tab-bar/routes coupling drifts again.
+ */
+describe('navigation coverage', () => {
+  it('offers capture, five tabs and a "More" sheet entry point', async () => {
+    renderAt('/');
+    // The shell mounts after the store finishes opening.
+    const bar = await waitFor(() => {
+      const found = document.querySelector('.tabbar');
+      if (!found) throw new Error('tab bar not mounted yet');
+      return found;
+    });
+    expect(bar).not.toBeNull();
+    const items = bar!.querySelectorAll('.tabbar__item');
+    // 5 destinations (Today, Map, Journal, Chapters, Paths) + More.
+    expect(items).toHaveLength(6);
+    expect(bar!.querySelector('.tabbar__capture')).not.toBeNull();
+
+    const labels = [...items].map((item) => item.textContent?.trim());
+    // Tabs use short labels; the full name lives in the More sheet and the sidebar.
+    expect(labels).toEqual(['Today', 'Map', 'Journal', 'Chapters', 'Paths', 'More']);
+  });
+
+  it('lists every route the app actually has in the "More" sheet', async () => {
+    renderAt('/');
+    const more = await waitFor(() => {
+      const found = [...document.querySelectorAll('.tabbar__item')].find(
+        (item) => item.textContent?.trim() === 'More'
+      ) as HTMLButtonElement | undefined;
+      if (!found) throw new Error('More button not mounted yet');
+      return found;
+    });
+    fireEvent.click(more);
+
+    const sheet = await screen.findByRole('dialog');
+    const destinations = [...sheet.querySelectorAll('a')].map((a) => a.getAttribute('href'));
+    for (const path of ['/map', '/journal', '/chapters', '/paths', '/trips', '/collections', '/share-preview', '/settings']) {
+      expect(destinations).toContain(path);
+    }
+  });
+
+  it('labels the "More" sheet as a modal dialog with a name', async () => {
+    renderAt('/');
+    const more = await waitFor(() => {
+      const found = [...document.querySelectorAll('.tabbar__item')].find(
+        (item) => item.textContent?.trim() === 'More'
+      ) as HTMLButtonElement | undefined;
+      if (!found) throw new Error('More button not mounted yet');
+      return found;
+    });
+    fireEvent.click(more);
+    const sheet = await screen.findByRole('dialog');
+    expect(sheet.getAttribute('aria-modal')).toBe('true');
+    expect(within(sheet).getByText('Everything else')).toBeTruthy();
+  });
+});

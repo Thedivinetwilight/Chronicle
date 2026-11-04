@@ -25,6 +25,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fitTransform,
   hitTest,
+  placeLabel,
   type LifeEdge,
   type LifeMapLayout,
   type LifeNode,
@@ -57,21 +58,39 @@ export interface LifeMapCanvasProps {
   onSelect: (node: LifeNode | null) => void;
   highlighted: ReadonlySet<string>;
   reducedMotion: boolean;
-  /** Viewport height in CSS pixels; the width is measured. */
+  /**
+   * Fallback viewport height in CSS pixels. Height is normally set by CSS so it
+   * can respond to the viewport (a 560px map on a 390×844 phone leaves nothing
+   * for the record panel below it). The measured height is always read back.
+   */
   height?: number;
+  /**
+   * Rebuilds the geometry for a given canvas size. The map is laid out in map
+   * units and then fitted, so a fixed 920×720 design shrinks to 40% on a phone
+   * and its labels become unreadable. Rebuilding at the measured size keeps
+   * text at a constant on-screen size on every device.
+   */
+  buildAtSize?: (width: number, height: number) => LifeMapLayout;
 }
 
 export function LifeMapCanvas({
-  layout,
+  layout: baseLayout,
   selectedKey,
   onSelect,
   highlighted,
   reducedMotion,
-  height = 520
+  buildAtSize
 }: LifeMapCanvasProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const [size, setSize] = useState({ width: 0, height });
+  const [size, setSize] = useState({ width: 0, height: 520 });
+
+  /* Rebuild geometry at the measured size. Until the first measure (width 0)
+     the caller's layout is used so the first paint is not empty. */
+  const layout = useMemo(() => {
+    if (!buildAtSize || size.width === 0) return baseLayout;
+    return buildAtSize(size.width, size.height);
+  }, [baseLayout, buildAtSize, size.width, size.height]);
   const [transform, setTransform] = useState<Transform>({ x: 0, y: 0, scale: 1 });
   const [userMoved, setUserMoved] = useState(false);
   const dragRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
@@ -81,13 +100,16 @@ export function LifeMapCanvas({
   useEffect(() => {
     const element = wrapRef.current;
     if (!element) return;
-    const measure = (): void => setSize({ width: element.clientWidth, height });
+    /* Height is read from the element, not the prop, so the stylesheet (and
+       therefore the viewport) decides how tall the map is. */
+    const measure = (): void =>
+      setSize({ width: element.clientWidth, height: Math.round(element.clientHeight) });
     measure();
     if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [height]);
+  }, []);
 
   const fit = useCallback(() => {
     if (size.width === 0) return;
@@ -251,6 +273,19 @@ export function LifeMapCanvas({
     onSelect(node ?? null);
   };
 
+  /* On a narrow canvas there is simply no way to draw eleven legible labels in
+     350 CSS pixels: each label is ~120px wide, so 11 of them need over three
+     times the available width. Rather than shrink type below the legibility
+     floor, narrow canvases label the *structure* — chapters and paths — plus
+     the node you have selected. Every other node keeps its shape, its position
+     and its tap target, and one tap names it. This is how graph views behave on
+     phones, and the outline view lists everything in text regardless. */
+  const labelAll = size.width >= 640;
+  const showLabel = (key: string, kind: LifeNodeKind): boolean =>
+    key === selectedKey
+      ? true
+      : labelAll || kind === 'chapter' || kind === 'path';
+
   const nodeByKey = useMemo(() => new Map(layout.nodes.map((node) => [node.key, node])), [layout.nodes]);
   const selected = selectedKey ? nodeByKey.get(selectedKey) ?? null : null;
   const transition = reducedMotion ? 'none' : 'transform 140ms var(--ease-out)';
@@ -258,7 +293,7 @@ export function LifeMapCanvas({
 
   /* The scene is drawn in viewBox units and transformed by a <g>. */
   return (
-    <div className="lifemap" ref={wrapRef} style={{ height }}>
+    <div className="lifemap" ref={wrapRef}>
       <svg
         ref={svgRef}
         className="lifemap__canvas"
@@ -360,6 +395,10 @@ export function LifeMapCanvas({
             <NodeGlyph
               key={node.key}
               node={node}
+              labels={layout.labels}
+              mapWidth={layout.width}
+              mapHeight={layout.height}
+              showLabel={showLabel(node.key, node.kind)}
               selected={node.key === selectedKey}
               dimmed={dimmed(node.key)}
               onSelect={() => onSelect(node)}
@@ -393,7 +432,9 @@ export function LifeMapCanvas({
       </div>
 
       <p className="lifemap__hint text-xs text-faint">
-        Drag to move · pinch or use the buttons to zoom · tap a node to open it
+        {labelAll
+          ? 'Drag to move · pinch or use the buttons to zoom · tap a node to open it'
+          : 'Tap a node to name it · pinch to zoom · Outline lists every record'}
       </p>
 
       {selected ? (
@@ -461,20 +502,35 @@ function EdgePath({
 
 function NodeGlyph({
   node,
+  labels,
+  mapWidth,
+  mapHeight,
+  showLabel,
   selected,
   dimmed,
   onSelect
 }: {
   node: LifeNode;
+  labels: LifeMapLayout['labels'];
+  mapWidth: number;
+  mapHeight: number;
+  /** False on narrow canvases for nodes that are not structure or selection. */
+  showLabel: boolean;
   selected: boolean;
   dimmed: boolean;
   onSelect: () => void;
 }) {
   const kindClass = `lifemap__node lifemap__node--${node.kind}`;
   const className = [kindClass, selected ? 'is-selected' : '', dimmed ? 'is-dimmed' : ''].filter(Boolean).join(' ');
-  const labelY = node.y + node.r + 15;
-  // Labels flip inward near the right edge so they never leave the canvas.
-  const anchor = 'middle';
+
+  /* Draw the placement the layout already resolved. Recomputing here would
+     reintroduce the collisions the resolver removed (and the clipping the
+     bounds calculation now prevents). A node with no placement is one the
+     narrow-canvas mode deliberately does not label. */
+  const resolved = labels.get(node.key);
+  const placement = resolved ?? placeLabel(node, mapWidth, mapHeight);
+  const { x, anchor, y: labelY } = placement;
+  const uncertainY = labelY > node.y ? labelY + 13 : labelY - 13;
 
   return (
     <g
@@ -498,11 +554,13 @@ function NodeGlyph({
     >
       <circle cx={node.x} cy={node.y} r={node.r + 13} className="lifemap__hit" />
       <Glyph node={node} selected={selected} />
-      <text x={node.x} y={labelY} textAnchor={anchor} className="lifemap__label">
-        {node.label}
-      </text>
-      {node.uncertain ? (
-        <text x={node.x} y={labelY + 13} textAnchor={anchor} className="lifemap__uncertain">
+      {showLabel ? (
+        <text x={x} y={labelY} textAnchor={anchor} className="lifemap__label">
+          {node.label}
+        </text>
+      ) : null}
+      {showLabel && node.uncertain ? (
+        <text x={x} y={uncertainY} textAnchor={anchor} className="lifemap__uncertain">
           date not exact
         </text>
       ) : null}

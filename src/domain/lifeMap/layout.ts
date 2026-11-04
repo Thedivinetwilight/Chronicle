@@ -123,6 +123,8 @@ export interface LifeMapLayout {
   /** Approved links, drawn. Suggested links, listed but never drawn. */
   approvedLinks: MemoryLink[];
   suggestedLinks: MemoryLink[];
+  /** Label boxes, already de-collided. The renderer draws exactly these. */
+  labels: Map<string, LabelPlacement>;
   /** The map bounds, with padding already applied. */
   bounds: { x: number; y: number; width: number; height: number };
   width: number;
@@ -148,17 +150,16 @@ export interface LayoutOptions {
 }
 
 const TAU = Math.PI * 2;
+/* Radii are derived from the canvas, not fixed. Fixed radii were the reason the
+   map collapsed into a vertical line on a phone and overflowed on desktop:
+   two chapters sit at 12 and 6 o'clock, and everything else was stacked on
+   those two axes. */
 const CENTRE_RING = 54;
-const AXIS_LENGTH = 236;
 const EXPERIENCE_KINDS: ReadonlySet<string> = new Set(['experience']);
 
 /* ------------------------------------------------------------------ *
  * Small helpers
  * ------------------------------------------------------------------ */
-
-function polar(angle: number, radius: number, cx: number, cy: number): { x: number; y: number } {
-  return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius };
-}
 
 function compareDates(a: string | null | undefined, b: string | null | undefined): number {
   if (a && b) return a < b ? -1 : a > b ? 1 : 0;
@@ -255,9 +256,50 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
     }
   }
 
+  /* -- canvas-relative geometry ------------------------------------- *
+     A radial tree needs two things a fixed layout cannot guarantee:
+     (a) axes spread widely enough that branches do not overlap, and
+     (b) enough radius that labels fit without colliding.
+     `ax`/`ay` are the usable half-extents after a margin for labels. */
+  /* Margins are proportional to the canvas. Fixed 150×96 margins were most of
+     a small phone canvas, which left the drawing tiny in a sea of background. */
+  const marginX = Math.min(150, width * 0.16);
+  const marginY = Math.min(96, height * 0.13);
+  const ax = Math.max(90, width / 2 - marginX);
+  const ay = Math.max(90, height / 2 - marginY);
+
+  /* On a narrow canvas, long labels cannot be drawn legibly however they are
+     placed, so they are elided at build time — the same way `mapLabel` already
+     elides very long titles. The full text stays in the node's description and
+     in the outline view. */
+  const labelBudget = width < 520 ? 18 : width < 760 ? 26 : 34;
+  const fitLabel = (text: string): string => mapLabel(text, labelBudget);
+
   const axisCount = chapters.length;
-  const axisStep = axisCount > 0 ? TAU / axisCount : 0;
+  /* With one or two chapters a naive `TAU / count` puts every branch on the
+     same vertical line. Chapters are laid out clockwise from twelve o'clock,
+     but never closer together than 100°; when two would collide the second is
+     pushed to the opposite quadrant, which is what makes a small archive read
+     as a branching tree rather than a spine. */
+  const preferredStep = axisCount > 0 ? TAU / axisCount : 0;
+  const axisStep = axisCount <= 1 ? 0 : Math.max(preferredStep, (100 * Math.PI) / 180);
   const startAngle = -Math.PI / 2; // twelve o'clock
+
+  /* Deliberately a circle, not an ellipse. The renderer draws axis lines from
+     `angle` + `startRadius`/`endRadius` itself; an elliptical fit would make
+     those lines and these nodes disagree, which reads as a drawing bug. A
+     uniform `reach` keeps one source of geometry truth. It is the smaller of
+     the two half-extents so nothing can ever leave the canvas. */
+  const reach = Math.min(ax, ay);
+
+  const polarFit = (angle: number, radius: number): { x: number; y: number } => ({
+    x: cx + Math.cos(angle) * radius,
+    y: cy + Math.sin(angle) * radius
+  });
+  const AXIS_LENGTH = Math.round(reach * 0.62);       // chapter spine length
+  const CHAPTER_RADIUS = CENTRE_RING + AXIS_LENGTH;    // where the chapter dot sits
+  const OUTER_RADIUS = reach * 0.94;                   // unfiled experiences
+  const ORBIT_RADIUS = CENTRE_RING + AXIS_LENGTH * 0.96; // records hanging off a chapter
 
   chapters.forEach((chapter, index) => {
     const angle = startAngle + index * axisStep;
@@ -266,16 +308,16 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
       chapterId: chapter.id,
       label: chapter.name,
       angle,
-      startRadius: CENTRE_RING + 26,
-      endRadius: CENTRE_RING + AXIS_LENGTH,
+      startRadius: CENTRE_RING + 20,
+      endRadius: CHAPTER_RADIUS - 18,
       undated
     });
-    const spineEnd = polar(angle, CENTRE_RING + AXIS_LENGTH + CENTRE_RING, cx, cy);
+    const spineEnd = polarFit(angle, CHAPTER_RADIUS);
     nodes.push({
       key: `chapter:${chapter.id}`,
       kind: 'chapter',
       id: chapter.id,
-      label: mapLabel(chapter.name),
+      label: fitLabel(chapter.name),
       description: chapter.description?.trim()
         ? `${chapter.name}: ${chapter.description.trim()}`
         : `${chapter.name} — a chapter with ${plural((byChapter.get(chapter.id) ?? []).length, 'experience')}.`,
@@ -304,23 +346,23 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
 
     /* -- experiences along the axis ---------------------------------- */
     const entries = [...(byChapter.get(chapter.id) ?? [])].sort((a, b) => compareDates(entryDate(a), entryDate(b)));
-    const inner = CENTRE_RING + 34;
-    const outer = CENTRE_RING + AXIS_LENGTH - 16;
-    const span = outer - inner;
+    const inner = CENTRE_RING + 30;
+    const outer = CHAPTER_RADIUS - 30;
+    const span = Math.max(outer - inner, 1);
     entries.forEach((entry, entryIndex) => {
       const t = entries.length === 1 ? 0.5 : entryIndex / (entries.length - 1);
       const radius = entries.length === 1 ? inner + span / 2 : inner + t * span;
       // A slight, deterministic fan keeps dense runs readable without random
       // jitter: neighbours alternate either side of the axis by a few degrees.
       const fan = entries.length > 2 ? (entryIndex % 2 === 0 ? -1 : 1) * 0.055 : 0;
-      const point = polar(angle + fan, radius, cx, cy);
+      const point = polarFit(angle + fan, radius);
       const key = `experience:${entry.id}`;
       if (!nodes.some((node) => node.key === key)) {
         nodes.push({
           key,
           kind: 'experience',
           id: entry.id,
-          label: mapLabel(entryLabel(entry)),
+          label: fitLabel(entryLabel(entry)),
           description: describeExperience(entry, chapter.name),
           x: point.x,
           y: point.y,
@@ -343,18 +385,21 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
 
   /* -- experiences with no chapter: a dashed outer ring ------------- */
   if (unassigned.length > 0) {
-    const ringRadius = CENTRE_RING + AXIS_LENGTH + CENTRE_RING + (chapters.length > 0 ? 44 : 0);
+    /* Unfiled experiences sit on an outer ring, spread evenly. With a single
+       unfiled memory the old code put it at exactly twelve o'clock on top of
+       the first chapter; start half a step round instead. */
+    const ringRadius = OUTER_RADIUS;
     const sorted = [...unassigned].sort((a, b) => compareDates(entryDate(a), entryDate(b)));
     sorted.forEach((entry, index) => {
-      const angle = startAngle + (index / Math.max(sorted.length, 1)) * TAU;
-      const point = polar(angle, ringRadius, cx, cy);
+      const angle = startAngle + ((index + 0.5) / Math.max(sorted.length, 1)) * TAU;
+      const point = polarFit(angle, ringRadius);
       const key = `experience:${entry.id}`;
       if (!nodes.some((node) => node.key === key)) {
         nodes.push({
           key,
           kind: 'experience',
           id: entry.id,
-          label: mapLabel(entryLabel(entry)),
+          label: fitLabel(entryLabel(entry)),
           description: describeExperience(entry, null),
           x: point.x,
           y: point.y,
@@ -407,25 +452,73 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
   const tripNode = new Map<string, LifeNode>();
   const collectionNode = new Map<string, LifeNode>();
 
-  /** Place a record as an arc off its chapter axis (or the outer ring). */
+  /* -- angular slots for owned records ------------------------------- *
+     Before placing anything, give every owned record a distinct angular slot.
+     Placing them per-kind around a chapter axis put a place, a person and a
+     trip within a few degrees of each other, so their labels overlapped into
+     an unreadable pile. Slots are allocated round-robin by chapter, so records
+     belonging to the same era still sit near each other (keeping edges short)
+     while no two records share an angle. */
+  const ownRecords: { kind: 'path' | 'place' | 'person' | 'trip' | 'collection'; id: string }[] = [
+    ...input.paths.filter((path) => !path.deleted_at).map((path) => ({ kind: 'path' as const, id: path.id })),
+    ...input.places.filter((place) => !place.deleted_at).map((place) => ({ kind: 'place' as const, id: place.id })),
+    ...input.people.filter((person) => !person.deleted_at).map((person) => ({ kind: 'person' as const, id: person.id })),
+    ...input.trips.filter((trip) => !trip.deleted_at).map((trip) => ({ kind: 'trip' as const, id: trip.id })),
+    ...input.collections
+      .filter((collection) => !collection.deleted_at)
+      .map((collection) => ({ kind: 'collection' as const, id: collection.id }))
+  ];
+  const slotByKey = new Map<string, number>();
+  {
+    // Group by owning chapter (null = unfiled) then interleave the groups, so
+    // each chapter's records are spread around the circle rather than bunched.
+    const groups = new Map<string, { kind: string; id: string }[]>();
+    for (const record of ownRecords) {
+      const owner = chapterForRecord(record.kind, record.id) ?? '__none__';
+      const list = groups.get(owner) ?? [];
+      list.push(record);
+      groups.set(owner, list);
+    }
+    const ordered: { kind: string; id: string }[] = [];
+    const buckets = [...groups.values()];
+    const longest = buckets.reduce((max, bucket) => Math.max(max, bucket.length), 0);
+    for (let column = 0; column < longest; column += 1) {
+      for (const bucket of buckets) if (bucket[column]) ordered.push(bucket[column]!);
+    }
+    /* The whole ring is offset by half the chapter step, so a record never
+       lands exactly on a chapter spine (which is where the axis label and the
+       spine's own end label are drawn). */
+    const ringOffset = axisCount > 0 ? axisStep / 2 : 0;
+    ordered.forEach((record, index) => {
+      const slot = ringOffset + ((index + 0.5) / Math.max(ordered.length, 1)) * TAU;
+      slotByKey.set(`${record.kind}:${record.id}`, startAngle + slot);
+    });
+  }
+
+  /** Place a record on its own angular slot, off its chapter's radius. */
   const placeOrbit = (
     kind: 'place' | 'person' | 'trip' | 'collection',
     record: Place | Person | Trip | Collection,
-    index: number,
-    total: number
+    index: number
   ): LifeNode => {
     const chapterId = chapterForRecord(kind, record.id);
-    const anchor = chapterId ? (chapterAngle.get(chapterId) ?? startAngle) : startAngle;
+    const anchor = slotByKey.get(`${kind}:${record.id}`) ?? startAngle;
     // Each orbit of a chapter is offset a little further round, so a chapter
     // with several kinds of relationship reads as a branching tree rather
     // than a starburst.
-    const laneBase = chapterId ? CENTRE_RING + 120 : CENTRE_RING + AXIS_LENGTH + 104;
-    const lane = laneBase + Math.min(index, 6) * 0;
-    const spread = total > 1 ? (index / (total - 1) - 0.5) * (axisCount >= 4 ? 0.36 : 0.5) : 0;
-    const radius = lane + (kind === 'person' ? 36 : kind === 'place' ? 0 : kind === 'trip' ? 18 : 54);
-    const point = polar(anchor + spread, radius, cx, cy);
-    const label =
-      'name' in record ? mapLabel(record.name) : mapLabel((record as Path).title);
+    const laneBase = chapterId ? ORBIT_RADIUS : OUTER_RADIUS * 0.86;
+    // Records of the same kind fan out around the chapter's axis; the fan is
+    // wider when there are few axes, so two chapters do not stack their
+    // places, people and trips on one line.
+    /* Two-ring stagger. Labels are wide and horizontal, so eleven of them on
+       one ring collide however evenly the angles are spread. Alternating slots
+       between an inner and an outer ring doubles the effective separation and
+       is instantly readable: it looks like a deliberate map, not an accident. */
+    const stagger = Math.round(reach * 0.075) * (index % 2 === 0 ? 0 : 1);
+    const kindOffset = kind === 'person' ? 34 : kind === 'place' ? 0 : kind === 'trip' ? 17 : 52;
+    const radius = Math.max(CENTRE_RING + 40, laneBase + kindOffset + stagger);
+    const point = polarFit(anchor, radius);
+    const label = 'name' in record ? fitLabel(record.name) : fitLabel((record as Path).title);
     const node: LifeNode = {
       key: `${kind}:${record.id}`,
       kind,
@@ -453,19 +546,20 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
 
   input.paths
     .filter((path) => !path.deleted_at)
-    .forEach((path, index, all) => {
+    .forEach((path) => {
       const chapterId = chapterForRecord('path', path.id);
-      const anchor = chapterId ? (chapterAngle.get(chapterId) ?? startAngle) : startAngle;
-      const spread = all.length > 1 ? (index / (all.length - 1) - 0.5) * 0.7 : 0;
+      // Paths use the same slot allocator as every other owned record, so a
+      // path never lands on top of a chapter's spine.
+      const anchor = slotByKey.get(`path:${path.id}`) ?? (chapterId ? (chapterAngle.get(chapterId) ?? startAngle) : startAngle);
+      const spread = 0;
       // A path is a line, not a dot: it runs alongside the chapter it belongs
       // to, which is what "the direction this era was heading" looks like.
-      const inner = polar(anchor + spread, CENTRE_RING + 40, cx, cy);
-      const outer = polar(anchor + spread, CENTRE_RING + AXIS_LENGTH + 24, cx, cy);
+      const outer = polarFit(anchor + spread, CHAPTER_RADIUS + 24);
       const node: LifeNode = {
         key: `path:${path.id}`,
         kind: 'path',
         id: path.id,
-        label: mapLabel(path.title),
+        label: fitLabel(path.title),
         description: describeOwned('path', path),
         x: outer.x,
         y: outer.y,
@@ -481,7 +575,7 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
         label: path.title,
         angle: anchor + spread,
         startRadius: CENTRE_RING + 40,
-        endRadius: CENTRE_RING + AXIS_LENGTH + 24,
+        endRadius: CHAPTER_RADIUS + 24,
         undated: !path.start_date
       });
       edges.push({
@@ -489,26 +583,25 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
         from: 'self',
         to: node.key,
         kind: 'spine',
-        label: `Path: ${path.title}`,
-        ...(inner ? {} : {})
+        label: `Path: ${path.title}`
       });
     });
 
   const places = input.places.filter((place) => !place.deleted_at);
   places.forEach((place, index) => {
-    placeNode.set(place.id, placeOrbit('place', place, index, Math.max(places.length, 1)));
+    placeNode.set(place.id, placeOrbit('place', place, index));
   });
   const people = input.people.filter((person) => !person.deleted_at);
   people.forEach((person, index) => {
-    personNode.set(person.id, placeOrbit('person', person, index, Math.max(people.length, 1)));
+    personNode.set(person.id, placeOrbit('person', person, index));
   });
   const trips = input.trips.filter((trip) => !trip.deleted_at);
   trips.forEach((trip, index) => {
-    tripNode.set(trip.id, placeOrbit('trip', trip, index, Math.max(trips.length, 1)));
+    tripNode.set(trip.id, placeOrbit('trip', trip, index));
   });
   const collections = input.collections.filter((collection) => !collection.deleted_at);
   collections.forEach((collection, index) => {
-    collectionNode.set(collection.id, placeOrbit('collection', collection, index, Math.max(collections.length, 1)));
+    collectionNode.set(collection.id, placeOrbit('collection', collection, index));
   });
 
   /* -- trip → place and collection → experience membership ---------- */
@@ -580,8 +673,17 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
     return true;
   });
 
-  /* -- bounds ------------------------------------------------------- */
-  const bounds = computeBounds(nodes, width, height);
+  /* -- labels, then bounds ------------------------------------------ *
+     Labels are resolved before bounds so the fit transform reserves room for
+     the text as it will actually be drawn.
+
+     On a narrow canvas the UI labels only the structure (chapters and paths)
+     and whatever is selected, because eleven ~120px labels cannot fit in 350
+     CSS pixels at a legible size. The resolver is told the same thing, so the
+     bounds do not reserve room for text that is never drawn — which is what
+     left a dead band above the map on a phone. */
+  const labels = resolveLabelCollisions(nodes, width, height, { dense: width >= 640 });
+  const bounds = computeBounds(nodes, width, height, labels);
 
   return {
     nodes,
@@ -589,6 +691,7 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
     axes,
     approvedLinks: approved,
     suggestedLinks: suggested,
+    labels,
     bounds,
     width,
     height,
@@ -650,19 +753,42 @@ function capitalise(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function computeBounds(nodes: LifeNode[], width: number, height: number): LifeMapLayout['bounds'] {
+function computeBounds(
+  nodes: LifeNode[],
+  width: number,
+  height: number,
+  labels: Map<string, LabelPlacement>
+): LifeMapLayout['bounds'] {
   if (nodes.length === 0) return { x: 0, y: 0, width, height };
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
+  const include = (x: number, y: number) => {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  };
   for (const node of nodes) {
-    minX = Math.min(minX, node.x - node.r);
-    minY = Math.min(minY, node.y - node.r);
-    maxX = Math.max(maxX, node.x + node.r);
-    maxY = Math.max(maxY, node.y + node.r);
+    // Glyph.
+    include(node.x - node.r, node.y - node.r);
+    include(node.x + node.r, node.y + node.r);
+    /* Label, using the exact rule the renderer draws with. Without this the
+       fit transform clips labels at the edges — which is what happened when
+       only the glyph radius was considered. */
+    const label = labels.get(node.key);
+    if (!label) continue;
+    include(label.box.x, label.box.y);
+    include(label.box.x + label.box.width, label.box.y + label.box.height);
+    if (node.uncertain) {
+      const y = label.y + (label.y > node.y ? 13 : -13);
+      include(label.box.x, y - 10);
+      include(label.box.x + label.box.width, y + 3);
+    }
   }
-  const padding = 28;
+  const padding = 26;
   const x = minX - padding;
   const y = minY - padding;
   return {
@@ -671,6 +797,192 @@ function computeBounds(nodes: LifeNode[], width: number, height: number): LifeMa
     width: Math.max(maxX + padding - x, 1),
     height: Math.max(maxY + padding - y, 1)
   };
+}
+
+/* ------------------------------------------------------------------ *
+ * Label placement — one rule, shared by bounds and the renderer
+ * ------------------------------------------------------------------ */
+
+/* Labels are drawn at a fixed 11px CSS size, but the map is drawn in map units
+   and then fitted. On a 350px phone canvas one map unit is barely 0.4 CSS
+   pixels, so a 34-character label is wider than the canvas. These constants
+   are the cap used when *laying out*, scaled by the canvas, so a label is
+   never wider than roughly a third of the drawing on any device. */
+const CHAR_WIDTH = 5.6;
+const LABEL_SHARE = 0.30;
+
+/** Estimated horizontal extent of a label at its rendered size. */
+export function labelWidth(label: string, canvasWidth = 920): number {
+  const cap = Math.max(88, Math.min(160, canvasWidth * LABEL_SHARE));
+  return Math.min(label.length * CHAR_WIDTH, cap);
+}
+
+export interface LabelPlacement {
+  /** Where the text's anchor sits. */
+  x: number;
+  y: number;
+  anchor: 'start' | 'middle' | 'end';
+  /** The label's box, used for bounds and for tests. */
+  box: { x: number; y: number; width: number; height: number };
+}
+
+/**
+ * Place a node's label so it extends *outward* from the centre of the map.
+ *
+ * This is the readable arrangement for a radial diagram: a horizontal,
+ * centre-anchored label under every node collides as soon as two nodes share a
+ * radius, because a label is much wider than it is tall. Pushing the text along
+ * the node's own radius turns the labels into a sunburst, where only nodes at
+ * similar angles can ever meet.
+ *
+ * The rule is exported so `computeBounds` can reserve exactly the space the
+ * renderer uses — a label can then never be clipped by the fit transform.
+ */
+export function placeLabel(
+  node: Pick<LifeNode, 'x' | 'y' | 'r' | 'label'>,
+  width: number,
+  height: number
+): LabelPlacement {
+  const centreX = width / 2;
+  const centreY = height / 2;
+  const dx = node.x - centreX;
+  const dy = node.y - centreY;
+  const distance = Math.hypot(dx, dy);
+  const ux = distance > 0.001 ? dx / distance : 0;
+  const uy = distance > 0.001 ? dy / distance : 1;
+  const w = labelWidth(node.label, width);
+  const h = 12;
+
+  let anchor: 'start' | 'middle' | 'end' = 'middle';
+  let x = node.x;
+  let y = node.y + node.r + 16;
+
+  if (distance > 6) {
+    if (Math.abs(ux) >= 0.25) {
+      anchor = ux > 0 ? 'start' : 'end';
+      x = node.x + ux * (node.r + 10);
+      y = node.y + uy * (node.r + 4) + 4;
+    } else {
+      anchor = 'middle';
+      y = uy > 0 ? node.y + node.r + 17 : node.y - node.r - 9;
+    }
+  }
+
+  const boxX = anchor === 'start' ? x : anchor === 'end' ? x - w : x - w / 2;
+  return { x, y, anchor, box: { x: boxX, y: y - h, width: w, height: h } };
+}
+
+/**
+ * Resolve label collisions for the whole map at once.
+ *
+ * `placeLabel` decides the *direction* a label grows (outward from the centre).
+ * That alone is not enough: two nodes at similar angles still produce two wide
+ * horizontal boxes in the same band. This pass takes the whole set, walks it in
+ * a stable order, and slides any label that would overlap vertically — away
+ * from the centre, so the label keeps pointing at its own node.
+ *
+ * It is deterministic (no randomness, no DOM measurement) so the same archive
+ * always draws the same map — which is also what the layout tests assert.
+ */
+export function resolveLabelCollisions(
+  nodes: LifeNode[],
+  width: number,
+  height: number,
+  options: { dense?: boolean } = {}
+): Map<string, LabelPlacement> {
+  /* `dense: false` is the narrow-canvas mode: only the structural nodes get a
+     placement, matching what the renderer draws. */
+  const dense = options.dense ?? true;
+  const labelled = dense
+    ? nodes
+    : nodes.filter((node) => node.kind === 'chapter' || node.kind === 'path');
+  const placed: { key: string; placement: LabelPlacement }[] = [];
+  const out = new Map<string, LabelPlacement>();
+
+  const overlaps = (a: LabelPlacement['box'], b: LabelPlacement['box']): boolean =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+  // Chapters and paths first: they are the structure of the map, so they keep
+  // the position the rule gives them and everything else moves around them.
+  const priority: Record<LifeNodeKind, number> = {
+    chapter: 0,
+    path: 1,
+    place: 2,
+    person: 3,
+    trip: 4,
+    collection: 5,
+    experience: 6
+  };
+  const ordered = [...labelled].sort((a, b) => {
+    const byKind = priority[a.kind] - priority[b.kind];
+    if (byKind !== 0) return byKind;
+    return a.y - b.y || a.x - b.x || a.key.localeCompare(b.key);
+  });
+
+  /** Slide a placement, keeping the text and its box in sync. */
+  const shift = (base: LabelPlacement, dx: number, dy: number): LabelPlacement => ({
+    ...base,
+    x: base.x + dx,
+    y: base.y + dy,
+    box: { ...base.box, x: base.box.x + dx, y: base.box.y + dy }
+  });
+
+  /* Glyphs are obstacles too. A label may not cover another node's marker —
+     that hides a record completely, which is worse than a tight label. */
+  const glyphBoxes = nodes.map((node) => ({
+    x: node.x - node.r - 3,
+    y: node.y - node.r - 3,
+    width: (node.r + 3) * 2,
+    height: (node.r + 3) * 2
+  }));
+
+  for (const node of ordered) {
+    const base = placeLabel(node, width, height);
+    // Labels move away from the centre of the map, so they read as coming from
+    // their own node rather than drifting across the drawing.
+    const awayY = base.y > height / 2 ? 1 : -1;
+    const awayX = base.x > width / 2 ? 1 : -1;
+    let candidate = base;
+
+    /* Candidate offsets, cheapest first: straight out, then a line up/down,
+       then further out to the side. A label that only ever moves vertically
+       ends up stacked directly on another one, which is not "no collision". */
+    const offsets: { dx: number; dy: number }[] = [];
+    // 1) straight out, then 2) a diagonal ladder, then 3) pure sideways. Ordered
+    // by distance so the label stays as close to its node as possible.
+    for (let step = 1; step <= 8; step += 1) {
+      offsets.push({ dx: 0, dy: 14 * step * awayY });
+      offsets.push({ dx: 14 * step * awayX, dy: 13 * step * awayY });
+      offsets.push({ dx: 14 * step * awayX, dy: 0 });
+      offsets.push({ dx: -14 * step * awayX, dy: 13 * step * awayY });
+    }
+
+    const hitsGlyph = (box: LabelPlacement['box']) =>
+      glyphBoxes.some((glyph) => overlaps(box, glyph));
+
+    for (const offset of offsets) {
+      const next = shift(base, offset.dx, offset.dy);
+      const clash = placed.some((other) => overlaps(next.box, other.placement.box));
+      // Never let the resolver itself push text outside the canvas — an
+      // off-canvas label is worse than a slightly tight one.
+      const inside = next.box.x >= 4 && next.box.x + next.box.width <= width - 4;
+      if (!clash && inside && !hitsGlyph(next.box)) {
+        candidate = next;
+        break;
+      }
+    }
+
+    /* Fallback: if nothing was clear, clamp the label inside the canvas so it
+       is never silently cut off. Truncation hides a record; overlap only makes
+       it slightly harder to read. */
+    if (candidate.box.x < 4) candidate = shift(candidate, 4 - candidate.box.x, 0);
+    if (candidate.box.x + candidate.box.width > width - 4) {
+      candidate = shift(candidate, width - 4 - (candidate.box.x + candidate.box.width), 0);
+    }
+    out.set(node.key, candidate);
+    placed.push({ key: node.key, placement: candidate });
+  }
+  return out;
 }
 
 /* ------------------------------------------------------------------ *

@@ -67,6 +67,7 @@ the design tokens).
 | [Export format](docs/EXPORT_FORMAT.md) | The JSON archive and Markdown bundle |
 | [Testing](docs/TESTING.md) | What is tested, how, and what is not |
 | [Roadmap](docs/ROADMAP.md) | V0.2+ and the future sync design |
+| [V0.2 UI redesign report](docs/V0_2_UI_REDESIGN_REPORT.md) | The redesign: palette, components, motion, and exactly what was verified in a real browser |
 | [Decisions](docs/DECISIONS/) | Architecture decision records |
 
 ## Licence & provenance

@@ -7,7 +7,16 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { buildLifeMap, filterNodes, fitTransform, hitTest, mapLabel, nodeMatchesChapter } from './layout';
+import {
+  buildLifeMap,
+  filterNodes,
+  fitTransform,
+  hitTest,
+  mapLabel,
+  nodeMatchesChapter,
+  placeLabel,
+  resolveLabelCollisions
+} from './layout';
 import { suggestMemoryLinks } from './suggestions';
 import { createChapter, createCollection, createEntry, createMemoryLink, createPath, createPlace, createTrip } from '../factories';
 
@@ -330,5 +339,75 @@ describe('suggestions never become facts on their own', () => {
         timezone: TZ
       })
     ).toEqual([]);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Label layout — the map is only readable if its labels are
+ * ------------------------------------------------------------------ */
+
+describe('label layout', () => {
+  it('grows a label outward from the centre so it points at its own node', () => {
+    const right = placeLabel({ x: 900, y: 360, r: 8, label: 'Kerala coast' }, 920, 720);
+    expect(right.anchor).toBe('start');
+    expect(right.x).toBeGreaterThan(900);
+
+    const left = placeLabel({ x: 20, y: 360, r: 8, label: 'Chennai' }, 920, 720);
+    expect(left.anchor).toBe('end');
+    expect(left.x).toBeLessThan(20);
+  });
+
+  it('keeps the self node centred rather than flinging its label sideways', () => {
+    const self = placeLabel({ x: 460, y: 360, r: 11, label: 'You' }, 920, 720);
+    expect(self.anchor).toBe('middle');
+    expect(Math.abs(self.x - 460)).toBeLessThan(1);
+  });
+
+  it('never leaves two labels in the same place, however crowded the archive', () => {
+    const chapter = createChapter({ name: 'Kerala', start_date: '2025-01-01' }, context);
+    const entries = [
+      entryOn('2025-02-01', { title: 'Late night', links: { chapter_ids: [chapter.id], path_ids: [] } }),
+      entryOn('2025-03-01', { title: 'Coast road', links: { chapter_ids: [chapter.id], path_ids: [] } }),
+      entryOn('2025-04-01', { title: 'Marina', links: { chapter_ids: [chapter.id], path_ids: [] } })
+    ];
+    const map = buildLifeMap({ ...emptyInput(), chapters: [chapter], entries });
+    const boxes = [...map.labels.values()].map((label) => label.box);
+    for (let a = 0; a < boxes.length; a += 1) {
+      for (let b = a + 1; b < boxes.length; b += 1) {
+        const first = boxes[a]!;
+        const second = boxes[b]!;
+        const overlap =
+          first.x < second.x + second.width &&
+          second.x < first.x + first.width &&
+          first.y < second.y + second.height &&
+          second.y < first.y + first.height;
+        expect(overlap).toBe(false);
+      }
+    }
+  });
+
+  it('reserves room in the bounds for the labels it actually draws', () => {
+    const chapter = createChapter({ name: 'A very long chapter name indeed', start_date: '2025-01-01' }, context);
+    const map = buildLifeMap({ ...emptyInput(), chapters: [chapter] }, { width: 920, height: 720 });
+    for (const label of map.labels.values()) {
+      expect(label.box.x).toBeGreaterThanOrEqual(map.bounds.x);
+      expect(label.box.x + label.box.width).toBeLessThanOrEqual(map.bounds.x + map.bounds.width);
+      expect(label.box.y).toBeGreaterThanOrEqual(map.bounds.y);
+      expect(label.box.y + label.box.height).toBeLessThanOrEqual(map.bounds.y + map.bounds.height);
+    }
+  });
+
+  it('gives every node a label, including the self node', () => {
+    const chapter = createChapter({ name: 'College', start_date: '2023-01-01' }, context);
+    const map = buildLifeMap({ ...emptyInput(), chapters: [chapter] });
+    expect(map.labels.size).toBe(map.nodes.length);
+  });
+
+  it('is deterministic, like the rest of the layout', () => {
+    const chapter = createChapter({ name: 'College', start_date: '2023-01-01' }, context);
+    const input = { ...emptyInput(), chapters: [chapter] };
+    const first = [...resolveLabelCollisions(buildLifeMap(input).nodes, 920, 720).values()];
+    const second = [...resolveLabelCollisions(buildLifeMap(input).nodes, 920, 720).values()];
+    expect(first).toEqual(second);
   });
 });

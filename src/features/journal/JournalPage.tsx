@@ -37,6 +37,11 @@ export function JournalPage() {
 
   const entries = useEntries(filter);
 
+  /* Privacy is the default, so a badge on every row carries no information.
+     It is only shown when the list mixes private and shareable records, which
+     is exactly when you need to know which is which. */
+  const anyShareable = (entries ?? []).some((entry) => !entry.private);
+
   return (
     <div className="page">
       <header className="page__header">
@@ -102,7 +107,10 @@ export function JournalPage() {
           <Link className="list__item entrycard" key={entry.id} to={`/journal/${entry.id}`}>
             <div className="entrycard__title">
               <span>{entry.title || 'Untitled'}</span>
-              {entry.private ? (
+              {/* Only flag privacy when it is the exception. When every entry
+                  is private — the default — a badge on every row is noise that
+                  trains you to stop reading it. */}
+              {entry.private && anyShareable ? (
                 <Badge>
                   <Icon name="lock" size={10} /> private
                 </Badge>

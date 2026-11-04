@@ -131,11 +131,51 @@ three now have regression coverage:
 
 ### What these tests deliberately do not claim
 
-- **No real browser has run in this environment.** There is no Chromium,
-  Firefox or WebKit available and `cdn.playwright.dev` is unreachable, so no
-  test here is evidence of visual layout, real touch gestures, pinch zoom,
-  service-worker behaviour or PWA installability. jsdom verifies structure,
-  state and persistence only. Playwright/axe coverage on a device matrix
-  remains the outstanding verification gap (see the milestone report).
-- Contrast is verified by `npm run contrast` (72 token pairings, WCAG 2.1 text
-  4.5:1 and UI 3:1), not by eye.
+- **The unit suite proves structure, state and persistence — not layout.** jsdom
+  has no layout engine, so nothing in `npm run test` is evidence of visual
+  quality, real touch gestures, pinch zoom, service-worker behaviour or PWA
+  installability.
+- **Contrast is verified by `npm run contrast`** (106 token pairings, WCAG 2.1
+  text 4.5:1 and UI 3:1), not by eye.
+- **No physical device has been tested.** The real-browser checks below run
+  Chromium with desktop-class emulation at 390×844, which exercises layout and
+  tap-target sizing but not iOS Safari, Android Chrome, real touch input or
+  virtual-keyboard behaviour.
+- **No third-party accessibility audit has run.** Roles, names, focus order and
+  `aria-*` state are asserted structurally and exercised by keyboard; no
+  axe/WAVE pass and no screen-reader session has been done.
+
+## Real-browser verification (opt-in)
+
+Two scripts in `scripts/browser/` drive a real Chromium. They are **not part of
+`npm run verify`** because they need a browser binary on the machine:
+
+```bash
+npm install --no-save playwright-core @sparticuz/chromium
+npm run preview                     # serve on :4173
+node scripts/browser/audit.mjs dark d        # 15 routes, 1440×950, dark
+node scripts/browser/audit.mjs light mobile  # 15 routes, 390×844, light
+node scripts/browser/flows.mjs               # 14 interactive checks
+```
+
+`audit.mjs` seeds a plausible archive into IndexedDB, then reports each route's
+horizontal overflow (`scrollWidth` vs `innerWidth`), `h1`, and writes a
+screenshot to `/tmp/audit/`. `flows.mjs` exercises capture, reload persistence,
+editing, search (including its empty state), map node selection by pointer and by
+keyboard, the outline alternative, share-preview privacy defaults, reduced motion
+and 200 % text scaling; it exits non-zero on any failure.
+
+Current results: **15/15 routes render without horizontal overflow in all four
+theme × viewport combinations**, and **14/14 interactive flows pass with zero
+console or page errors**. Details are in
+[docs/V0_2_UI_REDESIGN_REPORT.md](V0_2_UI_REDESIGN_REPORT.md).
+
+### A gap these scripts cannot see
+
+`audit.mjs` samples `document.documentElement.scrollWidth`. That check missed a
+real bug: the mobile tab bar declared six grid columns for seven children, so
+"More" wrapped onto a second grid row *inside a fixed-height, `position: fixed`
+bar* — rendered outside the viewport and untappable, while `scrollWidth` stayed
+exactly equal to `innerWidth`. Overflow checks do not cover fixed-position
+overflow. `src/app.test.tsx` now asserts the tab bar's child count and labels,
+which is what actually would have caught it.

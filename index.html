@@ -8,8 +8,8 @@
       content="Chronicle — a private, offline-first life archive. Capture what happened, keep it in your own words, and see how it connects. Nothing is published."
     />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#fbfaf8" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#131316" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f7f5f1" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)" />
     <meta name="referrer" content="no-referrer" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -38,15 +38,17 @@
     </script>
     <style>
       /* Minimal boot styling; the design system loads with the app bundle. */
-      html { background: #fbfaf8; }
-      html[data-theme='dark'] { background: #131316; }
+      /* Kept in sync with --color-bg in src/styles/tokens.css so the very
+         first paint matches the app instead of flashing the old palette. */
+      html { background: #f7f5f1; }
+      html[data-theme='dark'] { background: #0b0c0e; }
       #boot {
         position: fixed; inset: 0; display: grid; place-items: center;
         font: 400 13px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         letter-spacing: 0.02em;
-        color: #8a837c;
+        color: #6e6a62;
       }
-      html[data-theme='dark'] #boot { color: #7c7a80; }
+      html[data-theme='dark'] #boot { color: #918f87; }
       @media (prefers-reduced-motion: no-preference) {
         #boot span { animation: boot-fade 1.6s ease-in-out infinite; }
       }

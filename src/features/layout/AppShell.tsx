@@ -4,7 +4,7 @@
  *
  * Navigation shape (V0.2):
  *   Today · Life map · Journal · Chapters · Paths    ← the archive loop
- *   Trips · Collections · Share preview              ← gathering and sharing
+ *   Trips · Places & people · Collections · Share     ← gathering and sharing
  *   Projects · Timeline · Search · Roadmap · Settings ← everything else
  *
  * Phones get five tabs plus capture; everything else lives behind "More",
@@ -33,12 +33,12 @@ const PRIMARY: NavItem[] = [
   { to: '/map', label: 'Life map', icon: 'map', short: 'Map' },
   { to: '/journal', label: 'Journal', icon: 'book', short: 'Journal' },
   { to: '/chapters', label: 'Chapters', icon: 'layers', short: 'Chapters' },
-  { to: '/paths', label: 'Paths', icon: 'route' }
+  { to: '/paths', label: 'Paths', icon: 'route', short: 'Paths' }
 ];
 
 const GATHER: NavItem[] = [
   { to: '/trips', label: 'Trips', icon: 'plane' },
-  { to: '/places', label: 'Places & people', icon: 'pin' },
+  { to: '/places', label: 'Places & people', icon: 'pin', short: 'Places' },
   { to: '/collections', label: 'Collections', icon: 'archive' },
   { to: '/share-preview', label: 'Share preview', icon: 'shield', hint: 'Preview only — nothing is published' }
 ];
@@ -51,28 +51,35 @@ const ELSEWHERE: NavItem[] = [
   { to: '/settings', label: 'Settings', icon: 'settings' }
 ];
 
+/** The five tabs a phone shows; capture sits between the third and fourth. */
 const TABS: NavItem[] = PRIMARY;
 
 /** Look up the section a path belongs to; deeper paths inherit their parent. */
 function sectionTitle(pathname: string): string {
   const all = [...PRIMARY, ...GATHER, ...ELSEWHERE];
-  const match = all.find((item) => (item.to === '/' ? pathname === '/' : pathname.startsWith(item.to)));
+  // Longest prefix wins, so /places beats /paths-style collisions.
+  const match = all
+    .filter((item) => (item.to === '/' ? pathname === '/' : pathname === item.to || pathname.startsWith(`${item.to}/`)))
+    .sort((a, b) => b.to.length - a.to.length)[0];
   return match?.label ?? 'Chronicle';
+}
+
+function BrandMark() {
+  return (
+    <span className="shell__brand-mark" aria-hidden="true">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3.2" />
+        <path d="M12 3v3.2M12 17.8V21M3 12h3.2M17.8 12H21" opacity="0.85" />
+        <path d="M5.6 5.6l2.3 2.3M16.1 16.1l2.3 2.3M18.4 5.6l-2.3 2.3M7.9 16.1l-2.3 2.3" opacity="0.5" />
+      </svg>
+    </span>
+  );
 }
 
 function Brand() {
   return (
     <NavLink to="/" className="shell__brand" aria-label="Chronicle home">
-      <svg width="22" height="22" viewBox="0 0 64 64" aria-hidden="true">
-        <rect x="2" y="2" width="60" height="60" rx="14" fill="var(--color-surface)" stroke="var(--color-border-strong)" />
-        <g stroke="currentColor" strokeWidth="4.2" strokeLinecap="round" fill="none">
-          <path d="M15 22h27" />
-          <path d="M15 33h27" />
-          <path d="M15 44h11" />
-        </g>
-        <circle cx="41" cy="43" r="12" fill="var(--color-surface)" stroke="var(--color-accent)" strokeWidth="4" />
-        <path d="M41 36.5V43l4.8 3.2" fill="none" stroke="var(--color-accent)" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <BrandMark />
       <span style={{ fontSize: 'var(--font-size-md)' }}>Chronicle</span>
     </NavLink>
   );
@@ -81,7 +88,7 @@ function Brand() {
 function SidebarLink({ item }: { item: NavItem }) {
   return (
     <NavLink to={item.to} end={item.to === '/'} className="shell__sidebar-item" title={item.hint}>
-      <Icon name={item.icon} size={18} />
+      <Icon name={item.icon} size={17} />
       {item.label}
     </NavLink>
   );
@@ -94,19 +101,36 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="shell">
+      <a
+        href="#main"
+        className="btn btn--sm"
+        style={{ position: 'absolute', left: 8, top: -60, zIndex: 100 }}
+        onFocus={(event) => {
+          event.currentTarget.style.top = '8px';
+        }}
+        onBlur={(event) => {
+          event.currentTarget.style.top = '-60px';
+        }}
+      >
+        Skip to content
+      </a>
+
       <aside className="shell__sidebar">
         <Brand />
-        <nav className="shell__sidebar-nav" aria-label="Primary">
+        <nav className="shell__sidebar-nav" aria-label="Archive">
+          <span className="shell__sidebar-label">Archive</span>
           {PRIMARY.map((item) => (
             <SidebarLink key={item.to} item={item} />
           ))}
         </nav>
         <nav className="shell__sidebar-nav shell__sidebar-nav--secondary" aria-label="Gather">
+          <span className="shell__sidebar-label">Gather</span>
           {GATHER.map((item) => (
             <SidebarLink key={item.to} item={item} />
           ))}
         </nav>
         <nav className="shell__sidebar-nav shell__sidebar-nav--secondary" aria-label="Elsewhere">
+          <span className="shell__sidebar-label">More</span>
           {ELSEWHERE.map((item) => (
             <SidebarLink key={item.to} item={item} />
           ))}
@@ -115,6 +139,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Icon name="plus" size={17} />
           Capture
         </button>
+        <div className="shell__sidebar-footer" />
       </aside>
 
       <header className="shell__header">
@@ -124,10 +149,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <span className="shell__title">{sectionTitle(location.pathname)}</span>
         <div className="shell__actions">
           <NavLink to="/search" className="iconbtn" aria-label="Search" title="Search">
-            <Icon name="search" size={20} />
+            <Icon name="search" size={19} />
           </NavLink>
           <NavLink to="/settings" className="iconbtn" aria-label="Settings" title="Settings">
-            <Icon name="settings" size={20} />
+            <Icon name="settings" size={19} />
           </NavLink>
         </div>
       </header>
@@ -174,8 +199,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               onClick={() => setMoreOpen(false)}
             >
               <Icon name={item.icon} size={18} />
-              <span style={{ flex: 1 }}>{item.label}</span>
-              {item.hint ? <span className="text-xs text-faint">{item.hint}</span> : null}
+              <span style={{ flex: 1, minWidth: 0 }}>{item.label}</span>
+              {item.hint ? (
+                /* The hint used to collide with the label on a phone: both were
+                   unshrinkable, so they overlapped instead of the hint moving to
+                   its own line. */
+                <span className="shell__sidebar-hint text-2xs text-faint">{item.hint}</span>
+              ) : null}
             </NavLink>
           ))}
         </nav>

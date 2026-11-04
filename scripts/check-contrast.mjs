@@ -109,35 +109,55 @@ const TEXT_MIN = 4.5;
 const UI_MIN = 3.0;
 
 const PAIRS = [
-  // Body copy and labels
+  // ---- body & metadata text on every surface level ----------------------
   { fg: '--color-text', bg: '--color-bg', min: TEXT_MIN, use: 'body text on page' },
   { fg: '--color-text', bg: '--color-surface', min: TEXT_MIN, use: 'body text on card' },
   { fg: '--color-text', bg: '--color-surface-subtle', min: TEXT_MIN, use: 'body text on subtle surface' },
+  { fg: '--color-text', bg: '--color-surface-raised', min: TEXT_MIN, use: 'body text on raised surface' },
+  { fg: '--color-text', bg: '--color-surface-hover', min: TEXT_MIN, use: 'body text on hover surface' },
+  { fg: '--color-text', bg: '--color-nav', min: TEXT_MIN, use: 'body text on navigation' },
   { fg: '--color-text-muted', bg: '--color-bg', min: TEXT_MIN, use: 'secondary text on page' },
   { fg: '--color-text-muted', bg: '--color-surface', min: TEXT_MIN, use: 'secondary text on card' },
   { fg: '--color-text-muted', bg: '--color-surface-subtle', min: TEXT_MIN, use: 'secondary text on subtle surface' },
+  { fg: '--color-text-muted', bg: '--color-surface-raised', min: TEXT_MIN, use: 'secondary text on raised surface' },
   { fg: '--color-text-faint', bg: '--color-bg', min: TEXT_MIN, use: 'meta text on page' },
   { fg: '--color-text-faint', bg: '--color-surface', min: TEXT_MIN, use: 'meta text on card' },
   { fg: '--color-text-faint', bg: '--color-surface-subtle', min: TEXT_MIN, use: 'meta text on subtle surface' },
-  // Actions & links
+  { fg: '--color-text-faint', bg: '--color-surface-raised', min: TEXT_MIN, use: 'meta text on raised surface' },
+
+  // ---- actions & links ---------------------------------------------------
   { fg: '--color-accent', bg: '--color-bg', min: TEXT_MIN, use: 'link on page' },
   { fg: '--color-accent', bg: '--color-surface', min: TEXT_MIN, use: 'link on card' },
   { fg: '--color-accent', bg: '--color-surface-subtle', min: TEXT_MIN, use: 'link on subtle surface' },
+  { fg: '--color-accent', bg: '--color-surface-raised', min: TEXT_MIN, use: 'link on raised surface' },
   { fg: '--color-accent-hover', bg: '--color-bg', min: TEXT_MIN, use: 'hovered link on page' },
+  { fg: '--color-accent-hover', bg: '--color-surface', min: TEXT_MIN, use: 'hovered link on card' },
   { fg: '--color-on-accent', bg: '--color-accent', min: TEXT_MIN, use: 'filled button label' },
   { fg: '--color-on-accent', bg: '--color-accent-hover', min: TEXT_MIN, use: 'hovered button label' },
-  // Meaning
+  { fg: '--color-accent', bg: '--color-accent-subtle', over: '--color-surface', min: TEXT_MIN, use: 'accent text on accent tint' },
+  { fg: '--color-accent', bg: '--color-surface-hover', min: TEXT_MIN, use: 'active nav label' },
+
+  // ---- meaning: text, and text on its own tint ---------------------------
   { fg: '--color-success', bg: '--color-bg', min: TEXT_MIN, use: 'success text' },
   { fg: '--color-success', bg: '--color-surface', min: TEXT_MIN, use: 'success text on card' },
+  { fg: '--color-success', bg: '--color-success-subtle', over: '--color-surface', min: TEXT_MIN, use: 'success text on its tint' },
   { fg: '--color-warning', bg: '--color-bg', min: TEXT_MIN, use: 'warning text' },
   { fg: '--color-warning', bg: '--color-surface', min: TEXT_MIN, use: 'warning text on card' },
+  { fg: '--color-warning', bg: '--color-warning-subtle', over: '--color-surface', min: TEXT_MIN, use: 'warning text on its tint' },
   { fg: '--color-danger', bg: '--color-bg', min: TEXT_MIN, use: 'danger text' },
   { fg: '--color-danger', bg: '--color-surface', min: TEXT_MIN, use: 'danger text on card' },
-  // Non-text UI: borders and focus rings
+  { fg: '--color-danger', bg: '--color-danger-subtle', over: '--color-surface', min: TEXT_MIN, use: 'danger text on its tint' },
+  { fg: '--color-info', bg: '--color-bg', min: TEXT_MIN, use: 'info text' },
+  { fg: '--color-info', bg: '--color-surface', min: TEXT_MIN, use: 'info text on card' },
+
+  // ---- non-text UI: borders, focus rings, tints --------------------------
   { fg: '--color-border-strong', bg: '--color-bg', min: UI_MIN, use: 'strong border (control outline)' },
+  { fg: '--color-border-strong', bg: '--color-surface', min: UI_MIN, use: 'strong border on card' },
   { fg: '--color-border-focus', bg: '--color-bg', min: UI_MIN, use: 'focus ring on page' },
   { fg: '--color-border-focus', bg: '--color-surface', min: UI_MIN, use: 'focus ring on card' },
-  // Life map (V0.2): node labels are text on fills; edges and rings are UI.
+  { fg: '--color-border-focus', bg: '--color-surface-subtle', min: UI_MIN, use: 'focus ring on subtle surface' },
+
+  // ---- life map: labels sit on their own fill; edges/rings are UI --------
   { fg: '--map-ink-chapter', bg: '--map-fill-chapter', min: TEXT_MIN, use: 'map chapter label' },
   { fg: '--map-ink-experience', bg: '--map-fill-experience', min: TEXT_MIN, use: 'map experience label' },
   { fg: '--map-ink-path', bg: '--map-fill-path', min: TEXT_MIN, use: 'map path label' },
@@ -149,7 +169,8 @@ const PAIRS = [
   { fg: '--color-text-muted', bg: '--map-canvas', min: TEXT_MIN, use: 'map secondary text on canvas' },
   { fg: '--map-edge', bg: '--map-canvas', min: UI_MIN, use: 'map edge line' },
   { fg: '--map-edge-strong', bg: '--map-canvas', min: UI_MIN, use: 'selected map edge' },
-  { fg: '--map-self', bg: '--map-fill-experience', min: TEXT_MIN, use: 'map centre label' }
+  { fg: '--map-self', bg: '--map-fill-experience', min: TEXT_MIN, use: 'map centre label' },
+  { fg: '--map-self', bg: '--map-canvas', min: TEXT_MIN, use: 'map centre accent on canvas' }
 ];
 
 /* ------------------------------------------------------------------ *
@@ -171,7 +192,14 @@ function main() {
 
     for (const pair of PAIRS) {
       const foreground = resolve(pair.fg);
-      const background = resolve(pair.bg);
+      // A tinted background (`rgba()`) must be composited over the surface it
+      // is painted on before measuring, exactly as a browser paints it.
+      // Without this, every "text on its own tint" pairing silently measured
+      // against transparent black and reported nonsense.
+      const backdrop = resolve(pair.over ?? '--color-bg');
+      const rawBackground = resolve(pair.bg);
+      const background =
+        rawBackground.a < 1 ? composite(rawBackground, backdrop) : rawBackground;
       const ratio = contrastRatio(
         foreground.a < 1 ? composite(foreground, background) : foreground,
         background

@@ -12,7 +12,7 @@
  * never become connections until the user accepts them.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useChronicle } from '../../state/ChronicleContext';
 import { useChapterEntries, useLifeMapSource, useMemoryLinks } from '../../state/hooks';
@@ -63,6 +63,13 @@ export function LifeMapPage() {
   const reducedMotion = Boolean(settings?.reduce_motion) || prefersReducedMotion();
 
   const layout = useMemo(() => (source ? buildLifeMap(source) : null), [source]);
+
+  /* The canvas re-lays out the map at its own measured size, so labels stay
+     legible on a phone instead of being scaled down with the drawing. */
+  const buildAtSize = useCallback(
+    (width: number, height: number) => buildLifeMap(source!, { width, height }),
+    [source]
+  );
 
   /* The map and the outline share one filtered set, so switching views never
      changes what you are looking at. */
@@ -223,11 +230,11 @@ export function LifeMapPage() {
                 ) : (
                   <LifeMapCanvas
                     layout={layout}
+                    buildAtSize={source ? buildAtSize : undefined}
                     selectedKey={selectedKey}
                     onSelect={(node) => setSelectedKey(node?.key ?? null)}
                     highlighted={highlighted}
                     reducedMotion={reducedMotion}
-                    height={560}
                   />
                 )
               ) : (

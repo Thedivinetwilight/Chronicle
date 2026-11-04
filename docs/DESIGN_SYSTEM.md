@@ -6,9 +6,19 @@ tokens only, never raw values.
 
 ## 1. Voice
 
-Paper and ink. Warm neutral surfaces, one ink-blue accent, no gradients, no
-glass, no decorative colour. Colour carries meaning: accent = action, green =
-achieved/success, amber = caution or pending, red = destructive.
+Obsidian and amethyst. Deep graphite surfaces, warm off-white text, restrained
+silver-grey hairlines in place of shadows, and exactly one accent. No pure
+black, no glass, no decorative colour, no gradient on an interactive surface.
+
+Colour carries meaning: accent = action and current position, green =
+achieved/success, amber = caution or pending, red = destructive, blue-grey =
+informational. Amethyst (≈248°) was chosen over a warm gold because gold sat
+too close to the warning hue to stay separable at small sizes, and because
+"attention" should not be the dominant note in a personal archive. The four
+semantic hues are 107°/151°/117° apart from the accent.
+
+The palette is two deliberate schemes, not one inverted: dark is the default
+block, light is a companion worked out on its own warm paper.
 
 ## 2. Tokens
 
@@ -16,15 +26,26 @@ achieved/success, amber = caution or pending, red = destructive.
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `--color-bg` | `#FBFAF8` | `#131316` | page |
-| `--color-surface` | `#FFFFFF` | `#1A1A1F` | cards, sheets |
-| `--color-surface-subtle` | `#F5F3EF` | `#212128` | wells, hovers |
-| `--color-text` | `#1C1917` | `#F2F0ED` | body (16.8:1 / 16.3:1) |
-| `--color-text-muted` | `#57534E` | `#B8B3AB` | secondary (7.3:1 / 8.9:1) |
-| `--color-text-faint` | `#6F6A64` | `#99938B` | meta (5.1:1 / 6.1:1) |
-| `--color-accent` | `#3D5A80` | `#8FB0D9` | links, actions (6.8:1 / 8.3:1) |
-| `--color-on-accent` | `#FFFFFF` | `#14202E` | labels on accent |
-| `--color-success/warning/danger` | `#3F7D58` / `#8A5F27` / `#A34A3F` | `#7FBF9A` / `#D9A85C` / `#E08A7C` | meaning |
+| `--color-bg` | `#f7f5f1` | `#0b0c0e` | page |
+| `--color-bg-deep` | `#f2efea` | `#08090b` | map canvas, recesses |
+| `--color-surface` | `#fffefc` | `#15161a` | cards, sheets |
+| `--color-surface-subtle` | `#f1eee8` | `#1b1d22` | wells, hovers |
+| `--color-surface-raised` | `#ffffff` | `#22242a` | menus, popovers |
+| `--color-nav` | `#fbf9f5` | `#0e0f12` | rail, header, tab bar |
+| `--color-text` | `#1a1917` | `#f0eee9` | body (16.88:1 dark) |
+| `--color-text-muted` | `#5a5750` | `#adaba5` | secondary (8.45:1 dark) |
+| `--color-text-faint` | `#6e6a62` | `#918f87` | meta (5.51:1 dark) |
+| `--color-accent` | `#4a3e9c` | `#a9a0e8` | actions, current position (7.84:1 / 8.28:1) |
+| `--color-on-accent` | `#ffffff` | `#14102b` | labels on accent (8.54:1 / 7.80:1) |
+| `--color-success` | `#2e6b47` | `#8fc9a3` | achieved / positive |
+| `--color-warning` | `#7a5410` | `#d9b26a` | caution / pending |
+| `--color-danger` | `#9c3b2e` | `#e58f87` | destructive, errors |
+| `--color-info` | `#24505f` | `#9dc0d9` | informational |
+
+`#0b0c0e` is 1.073:1 against `#000000` — deliberately not pure black, so large
+dark fields do not crush on OLED or band on cheap panels. Each semantic colour
+also has `-subtle` (≈0.13 dark / 0.09 light) and `-border` (≈0.34 / 0.28)
+variants, so state is never signalled by colour alone.
 
 Borders: `--color-border` is a decorative hairline (10 % neutral).
 `--color-border-strong` is a solid control outline that clears 3:1 against the
@@ -33,31 +54,45 @@ fails the build on regression.
 
 ### Type
 
-Scale: 11 / 12 / 13 / 15 / 17 / 20 / 24 / 30 px. System font stack (no webfont
-download). Body line-height 1.55; reading views 1.7 with a 45 rem measure.
+Scale: 11 / 12 / 13.5 / 15 / 17 / 21 / 26 / 32 px, plus a display step of
+`clamp(30px, 6.5vw, 40px)` for page titles. System font stack (no webfont
+download). Body line-height 1.72; long-form reading uses
+`--line-height-reading` at a `68ch` measure (`--measure`). Uppercase is reserved
+for section eyebrows at 11 px with 0.08em tracking — never for content.
+
+`.text-block` (hand-authored prose) and `.markdown` (rendered Markdown, used by
+entry bodies) share one set of prose rules, so long-form reading is consistent
+wherever it appears.
 
 ### Space & shape
 
-4 px base scale (4–64). Radii 6 / 10 / 14 / pill. One shadow per elevation
-level (`--shadow-sm/md/lg`), never stacked.
+4 px base scale: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 / 96. Radii
+5 / 7 / 11 / 16 / 22 / pill. Depth is a hairline plus at most one soft shadow
+per elevation (`--shadow-sm/md/lg`), never stacked.
 
 ### Motion
 
-120–200 ms ease-out for state changes; sheets rise, dialogs fade-scale.
-`prefers-reduced-motion` and the `reduce_motion` setting both collapse all
-durations to 0 via tokens.
+80 ms for press feedback, 130 ms for hover, 200 ms for state, 280 ms for
+entrances. Sheets and dialogs rise 8 px and fade; menus fade; map selection grows
+the glyph and thickens its ring without moving neighbours. No parallax, no
+bounce, no looping decoration. `prefers-reduced-motion` and the `reduce_motion`
+setting both collapse every duration token to 0 — verified in a real browser
+(`--duration-base` and `--duration-enter` compute to `0ms`).
 
 ## 3. Layout
 
 - The shell is an explicit CSS grid with named areas: sidebar (≥ 1024 px),
   sticky header, and main. Grid placement is declared per region, never left
   to auto-flow — a regression here once pushed main content below the fold.
-- < 640 px: single column, bottom tab bar (five destinations + capture),
-  dialogs are bottom sheets with a grip; the header carries the brand.
+- < 640 px: single column, bottom tab bar (five destinations, a centred capture
+  button, and "More"), dialogs are bottom sheets with a grip; the header carries
+  the brand. The tab bar declares seven grid tracks for its seven children — a
+  six-track declaration once wrapped "More" out of the fixed bar entirely, which
+  no horizontal-overflow check could catch.
 - 640–1023 px: same, centred dialogs.
-- ≥ 1024 px: persistent 260 px sidebar with the capture action; tab bar hidden;
+- ≥ 1024 px: persistent 248 px sidebar with the capture action; tab bar hidden;
   the header names the current section instead of repeating the brand.
-- Reading views cap at 45 rem; lists cap at 64 rem.
+- Reading views cap at `--measure` (68ch); content caps at 68 rem, wide 84 rem.
 - Safe-area insets respected top and bottom (installed PWA).
 - Touch targets are tiered: primary controls ≥ 44 px on coarse pointers;
   compact secondary targets (tag chips, row checks, small buttons) ≥ 32 px,
@@ -139,3 +174,33 @@ once the user has moved the view — re-fitting under someone's hands is the
 classic map annoyance. With `prefers-reduced-motion` (or the app's own
 reduce-motion setting) all transitions are removed; position changes still
 apply instantly.
+
+## 4. State is never colour-only
+
+Three structural signals sit alongside colour:
+
+- the active sidebar item carries a **left rule**;
+- the active tab carries a **top bar**;
+- every Life Map node kind has a **different glyph geometry** (diamond, square,
+  circle, pin, plane, layered square), so shapes stay distinguishable in
+  greyscale.
+
+Disabled controls use `--color-text-faint` on `--color-surface-subtle` — an
+already-verified 4.5:1 pairing — rather than reduced opacity, which had left
+labels genuinely hard to read.
+
+## 5. Life Map label rules
+
+The map is drawn in map space and fitted to the canvas. Two rules keep it
+readable at every size:
+
+- **Geometry derives from the measured canvas**, not fixed constants, and the
+  layout is rebuilt when the canvas resizes. A fixed 920×720 design scaled to a
+  350 px phone had shrunk labels to roughly 40 %.
+- **Labels extend outward along their own radius** and are then de-collided by a
+  deterministic resolver (`placeLabel` / `resolveLabelCollisions` in
+  `src/domain/lifeMap/layout.ts`). Bounds are computed from the same placements,
+  so the fit transform cannot clip text. On canvases narrower than 640 px only
+  the structural nodes (chapters, paths) and the selected node are labelled;
+  every node keeps its shape, position, accessible name and tap target, and the
+  outline view remains the complete text route to the same records.

@@ -27,8 +27,10 @@ export default defineConfig({
       display: 'standalone',
       display_override: ['window-controls-overlay', 'standalone'],
       orientation: 'any',
-      background_color: '#fbfaf8',
-      theme_color: '#fbfaf8',
+      /* The install splash and browser chrome use the light theme's canvas
+         so a fresh install opens on the same surface the app boots into. */
+      background_color: '#f7f5f1',
+      theme_color: '#f7f5f1',
       categories: ['productivity'],
       icons: [
         { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },

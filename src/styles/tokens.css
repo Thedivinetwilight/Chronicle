@@ -1,47 +1,61 @@
 /* ===========================================================================
-   Chronicle design tokens (§04, §21)
+   Chronicle design tokens — "obsidian & amethyst"
    ---------------------------------------------------------------------------
-   One vocabulary, two themes. Every colour the interface uses is declared
-   here; component styles only ever reference a token, so a theme change is a
-   data change and contrast can be verified mechanically
+   One vocabulary, two deliberately-designed themes. Every colour the interface
+   uses is declared here; component styles only ever reference a token, so a
+   theme change is a data change and contrast is verified mechanically
    (see `npm run contrast`).
 
-   Principles:
-   - Restrained, paper-like light theme; deep neutral dark theme. No gradients,
-     no glass, no decorative colour. Colour carries meaning, not decoration.
-   - The accent is an ink blue, used for actions and focus — never for large
-     surfaces.
-   - Borders are near-transparent neutral lines; elevation comes from a
-     single subtle shadow token, not from stacking them.
+   The palette
+   -----------
+   Obsidian:  a warm-tinted near-black (#0B0C0E), never pure black — pure black
+              flattens elevation and reads as a void rather than a material.
+   Graphite:  three raised levels above it for cards, sheets and selection.
+   Ivory:     soft warm-white text and a warm paper light theme, not an
+              inverted dark one.
+   Amethyst:  the single accent. Violet is the colour of memory, dusk and
+              kept things; it separates cleanly from the semantic colours
+              (≈107°/151°/117° of hue from success/warning/danger), so an
+              accent never gets mistaken for a status. It is muted, never neon.
+
+   Rules
+   -----
+   - Colour always carries meaning with a second signal (icon, shape, text).
+   - Elevation is a border plus one shadow level, never stacked glow.
+   - No gradient fills on interactive surfaces; the only gradient is a barely
+     perceptible page wash that cannot reduce text contrast.
    =========================================================================== */
 
 :root {
-  /* -- type scale (px) ---------------------------------------------------- */
+  /* -- type scale (px) ----------------------------------------------------
+     A deliberate 7-step scale with a single display step. Sizes are declared
+     so components never invent one; the browser can still scale them. */
   --font-size-2xs: 11px;
   --font-size-xs: 12px;
-  --font-size-sm: 13px;
+  --font-size-sm: 13.5px;
   --font-size-md: 15px;
   --font-size-lg: 17px;
-  --font-size-xl: 20px;
-  --font-size-2xl: 24px;
-  --font-size-3xl: 30px;
-  /* The one display size: the home heading. Fluid so phones stay calm. */
-  --font-size-display: clamp(26px, 7vw, 32px);
+  --font-size-xl: 21px;
+  --font-size-2xl: 26px;
+  --font-size-3xl: 32px;
+  --font-size-display: clamp(30px, 6.5vw, 40px);
 
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
 
-  --tracking-tight: -0.021em;
-  --tracking-label: 0.07em;
+  --tracking-tight: -0.022em;
+  --tracking-snug: -0.012em;
+  --tracking-label: 0.06em;
 
-  --line-height-tight: 1.25;
-  --line-height-body: 1.55;
-  --line-height-reading: 1.7;
+  --line-height-tight: 1.2;
+  --line-height-snug: 1.35;
+  --line-height-body: 1.6;
+  --line-height-reading: 1.72;
 
   /* The reading column: long journal text stays comfortable on any screen. */
-  --measure: 72ch;
-  --reading-width: 45rem;
+  --measure: 68ch;
+  --reading-width: 42rem;
 
   /* -- spacing (4px base) -------------------------------------------------- */
   --space-1: 4px;
@@ -52,29 +66,39 @@
   --space-6: 32px;
   --space-7: 48px;
   --space-8: 64px;
+  --space-9: 96px;
 
   /* -- radii --------------------------------------------------------------- */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
+  --radius-xs: 5px;
+  --radius-sm: 7px;
+  --radius-md: 11px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
   --radius-full: 999px;
 
-  /* -- motion -------------------------------------------------------------- */
-  --duration-fast: 120ms;
-  --duration-base: 180ms;
-  --duration-slow: 200ms;
+  /* -- motion -------------------------------------------------------------
+     Short and purposeful. Every duration collapses to 0 under
+     prefers-reduced-motion or the app's own reduce-motion setting. */
+  --duration-instant: 80ms;
+  --duration-fast: 130ms;
+  --duration-base: 200ms;
+  --duration-slow: 280ms;
+  --duration-enter: 240ms;
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+  --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
 
-  /* -- layout -------------------------------------------------------------- */
-  --sidebar-width: 260px;
-  --header-height: 52px;
-  --tabbar-height: 58px;
+  /* -- structure ----------------------------------------------------------- */
+  --sidebar-width: 248px;
+  --header-height: 56px;
+  --tabbar-height: 60px;
   --touch-target: 44px;
+  --content-width: 68rem;
+  --content-width-wide: 84rem;
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 
-  /* -- z-order ------------------------------------------------------------- */
+  /* -- z-index ------------------------------------------------------------- */
   --z-header: 20;
   --z-sidebar: 30;
   --z-modal: 60;
@@ -82,155 +106,196 @@
 }
 
 /* ===========================================================================
-   Light theme — warm paper, ink text
+   Dark theme — the primary experience: obsidian and graphite
+   =========================================================================== */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Surfaces, darkest to lightest. Each step is ~1.08:1 apart, which is
+     visible as a material change without becoming a hard edge. */
+  --color-bg: #0b0c0e;
+  --color-bg-deep: #08090b;
+  --color-surface: #15161a;
+  --color-surface-subtle: #1b1d22;
+  --color-surface-raised: #22242a;
+  --color-surface-hover: #202228;
+  --color-nav: #0e0f12;
+
+  --color-border: rgba(240, 238, 233, 0.09);
+  --color-border-strong: #6e7280;
+  --color-border-focus: #a9a0e8;
+
+  --color-text: #f0eee9;
+  --color-text-muted: #adaba5;
+  --color-text-faint: #918f87;
+  --color-text-inverse: #0b0c0e;
+
+  /* Amethyst accent. */
+  --color-accent: #a9a0e8;
+  --color-accent-hover: #bdb5ef;
+  --color-accent-subtle: rgba(169, 160, 232, 0.14);
+  --color-accent-border: rgba(169, 160, 232, 0.38);
+  --color-on-accent: #14102b;
+
+  --color-success: #8fc9a3;
+  --color-success-subtle: rgba(143, 201, 163, 0.13);
+  --color-success-border: rgba(143, 201, 163, 0.34);
+  --color-warning: #d9b26a;
+  --color-warning-subtle: rgba(217, 178, 106, 0.13);
+  --color-warning-border: rgba(217, 178, 106, 0.34);
+  --color-danger: #e58f87;
+  --color-danger-subtle: rgba(229, 143, 135, 0.13);
+  --color-danger-border: rgba(229, 143, 135, 0.34);
+  --color-info: #9dc0d9;
+  --color-info-subtle: rgba(157, 192, 217, 0.13);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.42);
+  --shadow-md: 0 6px 16px -6px rgba(0, 0, 0, 0.62), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 24px 56px -16px rgba(0, 0, 0, 0.78), 0 2px 8px rgba(0, 0, 0, 0.45);
+
+  --color-scrim: rgba(4, 5, 7, 0.66);
+  --color-selection: rgba(169, 160, 232, 0.26);
+
+  /* One barely-there wash of the accent behind the page. A second, differently
+     hued layer read as grey smudging behind the translucent header rather than
+     as depth, and two hue stops on a large radius band visibly. */
+  --gradient-page: radial-gradient(1100px 600px at 16% -14%, rgba(120, 108, 196, 0.06), transparent 66%);
+
+  /* -- life map — a constellation on obsidian ------------------------------
+     Inks are luminous but desaturated; fills are tinted graphite. Every
+     ink/own-fill pair clears 4.5:1 (verified). */
+  --map-canvas: #0d0e11;
+  --map-canvas-deep: #090a0c;
+  --map-grid: rgba(240, 238, 233, 0.045);
+  --map-edge: #6e7078;
+  --map-edge-strong: #9a9da6;
+  --map-self: #a9a0e8;
+  --map-self-soft: rgba(169, 160, 232, 0.15);
+
+  --map-ink-chapter: #c8b6e2;
+  --map-ink-experience: #edeae4;
+  --map-ink-path: #a9cdb2;
+  --map-ink-place: #e0be92;
+  --map-ink-person: #d9afc6;
+  --map-ink-trip: #a3c6d9;
+  --map-ink-collection: #d6cf98;
+
+  --map-fill-chapter: #221d2b;
+  --map-fill-experience: #1a1c21;
+  --map-fill-path: #18221b;
+  --map-fill-place: #241e17;
+  --map-fill-person: #241a21;
+  --map-fill-trip: #161f25;
+  --map-fill-collection: #22200f;
+
+  --map-uncertain: rgba(240, 238, 233, 0.17);
+}
+
+/* ===========================================================================
+   Light theme — warm paper, ink and a deep amethyst
+   Designed as a companion, not an inversion: surfaces are warm off-whites,
+   the accent darkens so it still reads as ink on paper, and borders are
+   slightly more present because paper has less natural separation than
+   obsidian has.
    =========================================================================== */
 
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --color-bg: #fbfaf8;
-  --color-surface: #ffffff;
-  --color-surface-subtle: #f5f3ef;
+  --color-bg: #f7f5f1;
+  --color-bg-deep: #f2efea;
+  --color-surface: #fffefc;
+  --color-surface-subtle: #f1eee8;
   --color-surface-raised: #ffffff;
+  --color-surface-hover: #f4f1eb;
+  --color-nav: #fbf9f5;
 
-  /* `border` is decorative hairline; `border-strong` outlines controls and
-     therefore must clear 3:1 (WCAG 1.4.11). */
-  --color-border: rgba(28, 25, 23, 0.1);
-  --color-border-strong: #8a837c;
-  --color-border-focus: #3d5a80;
+  --color-border: rgba(26, 25, 23, 0.1);
+  --color-border-strong: #8b8680;
+  --color-border-focus: #4a3e9c;
 
-  --color-text: #1c1917;
-  --color-text-muted: #57534e;
-  --color-text-faint: #6f6a64;
+  --color-text: #1a1917;
+  --color-text-muted: #5a5750;
+  --color-text-faint: #6e6a62;
   --color-text-inverse: #fbfaf8;
 
-  --color-accent: #3d5a80;
-  --color-accent-hover: #32506f;
-  --color-accent-subtle: rgba(61, 90, 128, 0.09);
+  --color-accent: #4a3e9c;
+  --color-accent-hover: #3b3080;
+  --color-accent-subtle: rgba(74, 62, 156, 0.09);
+  --color-accent-border: rgba(74, 62, 156, 0.3);
   --color-on-accent: #ffffff;
 
-  --color-success: #3f7d58;
-  --color-success-subtle: rgba(63, 125, 88, 0.12);
-  --color-warning: #8a5f27;
-  --color-warning-subtle: rgba(138, 95, 39, 0.12);
-  --color-danger: #a34a3f;
-  --color-danger-subtle: rgba(163, 74, 63, 0.1);
+  --color-success: #2e6b47;
+  --color-success-subtle: rgba(46, 107, 71, 0.1);
+  --color-success-border: rgba(46, 107, 71, 0.28);
+  --color-warning: #7a5410;
+  --color-warning-subtle: rgba(122, 84, 16, 0.1);
+  --color-warning-border: rgba(122, 84, 16, 0.28);
+  --color-danger: #9c3b2e;
+  --color-danger-subtle: rgba(156, 59, 46, 0.09);
+  --color-danger-border: rgba(156, 59, 46, 0.26);
+  --color-info: #24505f;
+  --color-info-subtle: rgba(36, 80, 95, 0.09);
 
-  --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.06), 0 1px 1px rgba(28, 25, 23, 0.04);
-  --shadow-md: 0 4px 12px rgba(28, 25, 23, 0.08), 0 1px 3px rgba(28, 25, 23, 0.06);
-  --shadow-lg: 0 12px 32px rgba(28, 25, 23, 0.12), 0 2px 8px rgba(28, 25, 23, 0.08);
+  --shadow-sm: 0 1px 2px rgba(26, 25, 23, 0.05);
+  --shadow-md: 0 6px 16px -8px rgba(26, 25, 23, 0.13), 0 1px 3px rgba(26, 25, 23, 0.05);
+  --shadow-lg: 0 24px 56px -20px rgba(26, 25, 23, 0.2), 0 2px 8px rgba(26, 25, 23, 0.06);
 
-  --color-scrim: rgba(28, 25, 23, 0.36);
-  --color-selection: rgba(61, 90, 128, 0.18);
+  --color-scrim: rgba(26, 25, 23, 0.34);
+  --color-selection: rgba(74, 62, 156, 0.18);
 
-  /* -- life map (V0.2) ----------------------------------------------------
-     The map is warm and papery, and every hue below is paired with a distinct
-     SHAPE and a text label in the UI: colour is never the only carrier of
-     meaning. `--map-*` inks are text-safe on `--map-canvas`; the fills are
-     used for node bodies at full opacity so the shape stays legible. */
-  --map-canvas: #f7f4ee;
-  --map-canvas-deep: #f1ece3;
-  --map-grid: rgba(28, 25, 23, 0.055);
-  --map-edge: #8d857c;
-  --map-edge-strong: #6f6a64;
-  --map-self: #3d5a80;
-  --map-self-soft: rgba(61, 90, 128, 0.12);
-  --map-ink-chapter: #2f4858;
-  --map-ink-experience: #1c1917;
-  --map-ink-path: #35564a;
-  --map-ink-place: #6b4a2f;
-  --map-ink-person: #5c4368;
-  --map-ink-trip: #29506b;
-  --map-ink-collection: #635a2a;
-  --map-fill-chapter: #e4ded2;
-  --map-fill-experience: #fbfaf8;
-  --map-fill-path: #e3ece5;
-  --map-fill-place: #f0e5d8;
-  --map-fill-person: #ece4ef;
-  --map-fill-trip: #e2eaf0;
-  --map-fill-collection: #eee9d6;
-  --map-uncertain: rgba(28, 25, 23, 0.14);
+  /* Same single wash in light mode; the hue is the light accent so the page and
+     the nav never disagree about the product colour. */
+  --gradient-page: radial-gradient(1100px 600px at 14% -12%, rgba(74, 62, 156, 0.045), transparent 64%);
+
+  --map-canvas: #f6f3ec;
+  --map-canvas-deep: #efebe1;
+  --map-grid: rgba(26, 25, 23, 0.05);
+  --map-edge: #7c776e;
+  --map-edge-strong: #57534a;
+  --map-self: #4a3e9c;
+  --map-self-soft: rgba(74, 62, 156, 0.1);
+
+  --map-ink-chapter: #4a3566;
+  --map-ink-experience: #23221f;
+  --map-ink-path: #2c5a3d;
+  --map-ink-place: #6b4a1f;
+  --map-ink-person: #6b3e58;
+  --map-ink-trip: #24505f;
+  --map-ink-collection: #5c5518;
+
+  --map-fill-chapter: #e8e1f0;
+  --map-fill-experience: #ffffff;
+  --map-fill-path: #dfede3;
+  --map-fill-place: #f5e9d6;
+  --map-fill-person: #f1e2ea;
+  --map-fill-trip: #ddeaf0;
+  --map-fill-collection: #f0edd2;
+
+  --map-uncertain: rgba(26, 25, 23, 0.16);
 }
 
 /* ===========================================================================
-   Dark theme — deep neutral, one luminous accent
-   =========================================================================== */
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
-
-  --color-bg: #131316;
-  --color-surface: #1a1a1f;
-  --color-surface-subtle: #212128;
-  --color-surface-raised: #232329;
-
-  --color-border: rgba(245, 243, 239, 0.1);
-  --color-border-strong: #6b665f;
-  --color-border-focus: #8fb0d9;
-
-  --color-text: #f2f0ed;
-  --color-text-muted: #b8b3ab;
-  --color-text-faint: #99938b;
-  --color-text-inverse: #131316;
-
-  --color-accent: #8fb0d9;
-  --color-accent-hover: #a6c1e2;
-  --color-accent-subtle: rgba(143, 176, 217, 0.14);
-  --color-on-accent: #14202e;
-
-  --color-success: #7fbf9a;
-  --color-success-subtle: rgba(127, 191, 154, 0.16);
-  --color-warning: #d9a85c;
-  --color-warning-subtle: rgba(217, 168, 92, 0.16);
-  --color-danger: #e08a7c;
-  --color-danger-subtle: rgba(224, 138, 124, 0.16);
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
-
-  --color-scrim: rgba(0, 0, 0, 0.55);
-  --color-selection: rgba(143, 176, 217, 0.28);
-
-  /* -- life map (V0.2) — deep neutral canvas, luminous inks ----------------- */
-  --map-canvas: #17171b;
-  --map-canvas-deep: #121215;
-  --map-grid: rgba(245, 243, 239, 0.045);
-  --map-edge: #7a746d;
-  --map-edge-strong: #8f8a83;
-  --map-self: #8fb0d9;
-  --map-self-soft: rgba(143, 176, 217, 0.16);
-  --map-ink-chapter: #a9c3d8;
-  --map-ink-experience: #f2f0ed;
-  --map-ink-path: #9dc4ad;
-  --map-ink-place: #d9b48c;
-  --map-ink-person: #c3aad1;
-  --map-ink-trip: #9ec2da;
-  --map-ink-collection: #d3c581;
-  --map-fill-chapter: #262b31;
-  --map-fill-experience: #1a1a1f;
-  --map-fill-path: #1f2a24;
-  --map-fill-place: #2a231c;
-  --map-fill-person: #26212b;
-  --map-fill-trip: #1d262d;
-  --map-fill-collection: #272417;
-  --map-uncertain: rgba(245, 243, 239, 0.16);
-}
-
-/* ===========================================================================
-   Reduced motion (§21): motion is a courtesy, never a requirement
+   Reduced motion: motion is a courtesy, never a requirement.
+   Both the OS preference and the app's own setting collapse every duration.
    =========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
   :root {
+    --duration-instant: 0ms;
     --duration-fast: 0ms;
     --duration-base: 0ms;
     --duration-slow: 0ms;
+    --duration-enter: 0ms;
   }
 }
 
 :root[data-reduce-motion='true'] {
+  --duration-instant: 0ms;
   --duration-fast: 0ms;
   --duration-base: 0ms;
   --duration-slow: 0ms;
+  --duration-enter: 0ms;
 }

@@ -77,8 +77,12 @@ export function HomePage() {
 
   const live = (entries ?? []).filter((entry) => !entry.deleted_at);
   const todayEntries = live.filter((entry) => localDateIso(entry.occurred_at, timezone) === today);
-  const recent = live.slice(0, 8);
+  // "Recently" excludes what is already shown in the Today block, so the same
+  // memory is never presented twice on one screen.
+  const recent = live.filter((entry) => !todayEntries.includes(entry)).slice(0, 6);
   const emptyArchive = entries !== undefined && live.length === 0;
+  // Recency is the point of this list; a privacy badge on every row is noise.
+  const showPrivacy = recent.some((entry) => !entry.private);
 
   return (
     <div className="page">
@@ -87,11 +91,12 @@ export function HomePage() {
           <span className="eyebrow">{formatDateLabel(today)}</span>
           <h1>{greeting()}</h1>
         </div>
-        <span className="text-xs text-faint">
-          <Icon name="lock" size={12} className="icon-inline" /> Private to you
+        <span className="badge">
+          <Icon name="lock" size={11} className="icon-inline" /> Private to you
         </span>
       </header>
 
+      {/* The one thing this page wants you to do. Everything else is below. */}
       <section className="composer" aria-label="Quick capture">
         <label className="sr-only" htmlFor="home-capture">
           Write something that happened
@@ -106,7 +111,7 @@ export function HomePage() {
             if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') void save();
           }}
           aria-describedby={error ? 'capture-error' : 'capture-hint'}
-          placeholder="What happened? A sentence is enough."
+          placeholder="What happened today?"
         />
         {error ? (
           <p className="note note--danger" id="capture-error" role="alert">
@@ -151,9 +156,9 @@ export function HomePage() {
         <EmptyState icon="book" title="Your archive is empty — that is a fine place to start">
           Write one thing above: something that happened, something you noticed, something you want to remember. It
           stays on this device unless you export it.
-          <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', justifyContent: 'center' }}>
             <Link to="/chapters" className="btn">
-              <Icon name="map" size={16} /> Create a chapter
+              <Icon name="layers" size={15} /> Create a chapter
             </Link>
             <Link to="/roadmap" className="btn btn--quiet">
               What else is planned
@@ -167,24 +172,41 @@ export function HomePage() {
           <div className="section-head">
             <h2 className="section-head__title">Today, in your words</h2>
             <Link to="/journal" className="section-head__link">
-              Journal
+              Journal <Icon name="chevron-left" size={12} style={{ transform: 'rotate(180deg)' }} />
             </Link>
           </div>
           <div className="card">
-            <div className="card__body form-stack form-stack--tight">
-              {todayEntries.map((entry) => (
-                <div key={entry.id}>
-                  <Link to={`/journal/${entry.id}`} className="entrycard__title">
-                    {entry.title || firstLine(entry.body) || 'Untitled'}
-                  </Link>
-                  <div className="entrycard__meta">
-                    <RelativeTime at={entry.occurred_at} timezone={timezone} />
-                    {entry.links?.chapter_ids.length ? ' · in a chapter' : ''}
-                    {entry.private ? ' · private' : ''}
+            <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              {todayEntries.map((entry, index) => (
+                <div key={entry.id} style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                  {/* A quiet timeline rail: today's notes read as a sequence. */}
+                  <div aria-hidden="true" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        marginTop: 7,
+                        borderRadius: '999px',
+                        background: index === 0 ? 'var(--color-accent)' : 'var(--color-border-strong)',
+                        flex: 'none'
+                      }}
+                    />
+                    {index < todayEntries.length - 1 ? (
+                      <span style={{ width: 1, flex: 1, background: 'var(--color-border)' }} />
+                    ) : null}
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <Link to={`/journal/${entry.id}`} className="entrycard__title">
+                      {entry.title || firstLine(entry.body) || 'Untitled'}
+                    </Link>
+                    <div className="entrycard__meta">
+                      <RelativeTime at={entry.occurred_at} timezone={timezone} />
+                      {entry.links?.chapter_ids.length ? ' · in a chapter' : ''}
+                    </div>
                   </div>
                 </div>
               ))}
-              <p className="text-xs text-faint">
+              <p className="text-xs text-faint" style={{ paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-border)' }}>
                 Assembled only from what you wrote today. Chronicle has not summarised, interpreted or added anything.
               </p>
             </div>
@@ -192,53 +214,101 @@ export function HomePage() {
         </section>
       ) : null}
 
-      {live.length > 0 ? (
+      {recent.length > 0 ? (
         <section aria-label="Recent experiences">
           <div className="section-head">
             <h2 className="section-head__title">Recently</h2>
             <Link to="/journal" className="section-head__link">
-              All experiences
+              All experiences <Icon name="chevron-left" size={12} style={{ transform: 'rotate(180deg)' }} />
             </Link>
           </div>
           <div className="card list">
             {recent.map((entry) => (
-              <RecentRow key={entry.id} entry={entry} />
+              <RecentRow key={entry.id} entry={entry} showPrivacy={showPrivacy} />
             ))}
           </div>
         </section>
       ) : null}
 
-      {(chapters ?? []).length > 0 || (paths ?? []).length > 0 ? (
-        <div style={{ display: 'grid', gap: 'var(--space-5)', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+      {/* Secondary material, grouped and visually quieter than the archive. */}
+      {(chapters ?? []).length > 0 || (paths ?? []).length > 0 || (trips ?? []).length > 0 ? (
+        <div
+          style={{
+            display: 'grid',
+            gap: 'var(--space-4)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 15rem), 1fr))'
+          }}
+        >
           {(chapters ?? []).length > 0 ? (
-            <section aria-label="Your chapters">
-              <div className="section-head">
-                <h2 className="section-head__title">Chapters</h2>
+            <section aria-label="Your chapters" className="card">
+              <div className="card__header">
+                <h2 className="section-head__title" style={{ margin: 0 }}>
+                  Chapters
+                </h2>
                 <Link to="/chapters" className="section-head__link">
                   All
                 </Link>
               </div>
-              <div className="chip-row">
-                {(chapters ?? []).slice(0, 6).map((chapter) => (
-                  <Link key={chapter.id} to={`/chapters/${chapter.id}`} className="tagchip">
-                    {chapter.name}
+              <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 'var(--space-2)' }}>
+                {(chapters ?? []).slice(0, 4).map((chapter) => (
+                  <Link
+                    key={chapter.id}
+                    to={`/chapters/${chapter.id}`}
+                    className="shell__sidebar-item"
+                    style={{ minHeight: 36 }}
+                  >
+                    <span
+                      className={`chapter-card__bar accent-${chapter.accent}`}
+                      style={{ width: 3, minHeight: 16, height: 16 }}
+                      aria-hidden="true"
+                    />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {chapter.name}
+                    </span>
                   </Link>
                 ))}
               </div>
             </section>
           ) : null}
+
           {(paths ?? []).length > 0 ? (
-            <section aria-label="Your paths">
-              <div className="section-head">
-                <h2 className="section-head__title">Paths in motion</h2>
+            <section aria-label="Your paths" className="card">
+              <div className="card__header">
+                <h2 className="section-head__title" style={{ margin: 0 }}>
+                  Paths in motion
+                </h2>
                 <Link to="/paths" className="section-head__link">
                   All
                 </Link>
               </div>
-              <div className="chip-row">
-                {(paths ?? []).slice(0, 6).map((path) => (
-                  <Link key={path.id} to={`/paths/${path.id}`} className="tagchip">
-                    {path.title}
+              <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 'var(--space-2)' }}>
+                {(paths ?? []).slice(0, 4).map((path) => (
+                  <Link key={path.id} to={`/paths/${path.id}`} className="shell__sidebar-item" style={{ minHeight: 36 }}>
+                    <Icon name="route" size={14} style={{ color: 'var(--map-ink-path)', flex: 'none' }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {path.title}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {(trips ?? []).length > 0 ? (
+            <section aria-label="Recent trips" className="card">
+              <div className="card__header">
+                <h2 className="section-head__title" style={{ margin: 0 }}>
+                  Trips
+                </h2>
+                <Link to="/trips" className="section-head__link">
+                  All
+                </Link>
+              </div>
+              <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 'var(--space-2)' }}>
+                {(trips ?? []).slice(0, 4).map((trip) => (
+                  <Link key={trip.id} to={`/trips/${trip.id}`} className="shell__sidebar-item" style={{ minHeight: 36 }}>
+                    <Icon name="plane" size={14} style={{ color: 'var(--map-ink-trip)', flex: 'none' }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trip.name}</span>
                   </Link>
                 ))}
               </div>
@@ -247,31 +317,33 @@ export function HomePage() {
         </div>
       ) : null}
 
-      {(trips ?? []).length > 0 ? (
-        <section aria-label="Recent trips">
-          <div className="section-head">
-            <h2 className="section-head__title">Trips</h2>
-            <Link to="/trips" className="section-head__link">
-              All
-            </Link>
-          </div>
-          <div className="chip-row">
-            {(trips ?? []).slice(0, 6).map((trip) => (
-              <Link key={trip.id} to={`/trips/${trip.id}`} className="tagchip">
-                <Icon name="plane" size={12} className="icon-inline" /> {trip.name}
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <div className="note">
-        <Icon name="compass" size={16} className="note__icon" />
-        <span>
-          <Link to="/map">Open your life map</Link> to see how these experiences connect — chapters, places, people and
-          the paths you were following.
+      {/* The bridge to the signature view. */}
+      <Link
+        to="/map"
+        className="card"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-4)',
+          padding: 'var(--space-4)',
+          textDecoration: 'none',
+          color: 'inherit',
+          background: 'var(--color-surface)'
+        }}
+      >
+        <span className="state__halo" aria-hidden="true" style={{ width: 40, height: 40 }}>
+          <Icon name="map" size={19} />
         </span>
-      </div>
+        <span style={{ minWidth: 0, flex: 1 }}>
+          <span className="entrycard__title" style={{ display: 'block' }}>
+            Open your life map
+          </span>
+          <span className="text-xs text-muted">
+            See how these experiences connect — chapters, places, people and the paths you were following.
+          </span>
+        </span>
+        <Icon name="chevron-left" size={18} style={{ transform: 'rotate(180deg)', color: 'var(--color-text-faint)', flex: 'none' }} />
+      </Link>
 
       <EntryDialog
         open={reviewOpen}
@@ -289,15 +361,16 @@ export function HomePage() {
   );
 }
 
-function RecentRow({ entry }: { entry: JournalEntry }) {
+function RecentRow({ entry, showPrivacy }: { entry: JournalEntry; showPrivacy: boolean }) {
   const { timezone } = useChronicle();
+  const preview = firstLine(entry.body);
   return (
     <Link to={`/journal/${entry.id}`} className="list__item entrycard">
-      <span className="entrycard__title">{entry.title || firstLine(entry.body) || 'Untitled experience'}</span>
+      <span className="entrycard__title">{entry.title || preview || 'Untitled experience'}</span>
       <span className="entrycard__meta">
         <RelativeTime at={entry.occurred_at} timezone={timezone} />
         {entry.occurred_precision !== 'exact' ? ' · approximate' : ''}
-        {entry.private ? (
+        {entry.private && showPrivacy ? (
           <Badge>
             <Icon name="lock" size={10} className="icon-inline" /> private
           </Badge>
