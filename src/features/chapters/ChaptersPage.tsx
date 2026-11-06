@@ -11,10 +11,12 @@ import { useChronicle } from '../../state/ChronicleContext';
 import { useChapter, useChapterEntries, useChapters } from '../../state/hooks';
 import type { Chapter } from '../../domain/types';
 import { formatDateLabel } from '../../domain/time';
+import { WhenItHappened, precisionNote } from '../../ui/format';
 import { Badge, Button, Field, IconButton, TextArea, TextInput } from '../../ui/primitives';
 import { Dialog } from '../../ui/Dialog';
 import { EmptyState, ErrorState, SkeletonList } from '../../ui/states';
 import { Icon } from '../../ui/Icon';
+import { Cover } from '../../ui/art/Cover';
 
 const ACCENTS: { value: Chapter['accent']; label: string }[] = [
   { value: 'ink', label: 'Ink' },
@@ -47,10 +49,14 @@ export function ChaptersPage() {
           <span className="eyebrow">Eras you name</span>
           <h1>Chapters</h1>
           <p className="text-sm text-muted measure">
-            A chapter is a period you name — “First year of college”, “Learning to travel”. Experiences can belong to
-            one, or none. Nothing has to be filed to be kept.
+            A chapter names a stretch of time. Experiences can belong to one, or to none.
           </p>
         </div>
+        {/* One create action per page, in the header, on an empty page and a full
+            one alike. The empty state used to repeat it, which put two buttons
+            with the same purpose on screen — and made them indistinguishable to
+            a screen reader. The header owns the action; the empty state says
+            what the section is for. */}
         <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
           New chapter
         </Button>
@@ -63,25 +69,25 @@ export function ChaptersPage() {
       ) : null}
 
       {chapters.length === 0 ? (
-        <EmptyState icon="map" title="No chapters yet">
-          Chapters help the Life Map branch. You can add one now, or keep capturing and add the era later — both are
-          fine.
-          <div style={{ marginTop: 'var(--space-3)' }}>
-            <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
-              Create your first chapter
-            </Button>
-          </div>
+        <EmptyState
+          mark="sprig"
+          compact
+          title="No chapters yet"
+        >
+          A chapter names a stretch of time.
         </EmptyState>
       ) : (
-        <div className="card list">
+        /* A shelf, not a table. Each chapter gets a plate derived from its own
+           name and id, so the index looks like a set of bound volumes and stays
+           stable between visits. */
+        <div className="covershelf">
           {chapters.map((chapter) => (
-            <Link key={chapter.id} to={`/chapters/${chapter.id}`} className="list__item row-between chapter-card">
-              <span className={`chapter-card__bar accent-${chapter.accent}`} aria-hidden="true" />
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span className="entrycard__title">{chapter.name}</span>
-                <span className="entrycard__meta">{dateRange(chapter)}</span>
+            <Link key={chapter.id} to={`/chapters/${chapter.id}`} className="covershelf__item rowlink">
+              <span className="coverframe">
+                <Cover kind="chapter" id={chapter.id} name={chapter.name} />
               </span>
-              <Icon name="chevron-left" size={16} style={{ transform: 'rotate(180deg)', color: 'var(--color-text-faint)' }} />
+              <span className="covershelf__name">{chapter.name}</span>
+              <span className="covershelf__meta">{dateRange(chapter)}</span>
             </Link>
           ))}
         </div>
@@ -132,7 +138,7 @@ export function ChapterPage() {
 
   if (chapter === undefined) return <SkeletonList rows={3} />;
   if (chapter === null) {
-    return <ErrorState title="Chapter not found" message="It may have been deleted on this device." />;
+    return <ErrorState title="Chapter not found" message="It may have been deleted." />;
   }
 
   const remove = async () => {
@@ -185,9 +191,8 @@ export function ChapterPage() {
           </Link>
         </div>
         {entries && entries.length === 0 ? (
-          <EmptyState icon="book" title="Nothing filed here yet">
-            Open any experience and add it to this chapter. A chapter with no experiences yet is a perfectly good
-            chapter.
+          <EmptyState mark="sprig" compact title="Nothing filed here yet">
+            Open an experience and add it to this chapter.
           </EmptyState>
         ) : (
           <div className="card list">
@@ -195,8 +200,15 @@ export function ChapterPage() {
               <Link key={entry.id} to={`/journal/${entry.id}`} className="list__item entrycard">
                 <span className="entrycard__title">{entry.title || 'Untitled experience'}</span>
                 <span className="entrycard__meta">
-                  {formatDateLabel(entry.occurred_at.slice(0, 10))}
-                  {entry.occurred_precision !== 'exact' ? ' · approximate' : ''}
+                  {/* Same rule as everywhere else: an unknown date prints as a
+                      phrase, never next to a timestamp it contradicts. */}
+                  <WhenItHappened
+                    at={entry.occurred_at}
+                    precision={entry.occurred_precision}
+                    timezone={timezone}
+                    unknownLabel="Date not recorded"
+                  />
+                  {precisionNote(entry.occurred_precision) ? ` · ${precisionNote(entry.occurred_precision)}` : ''}
                 </span>
               </Link>
             ))}

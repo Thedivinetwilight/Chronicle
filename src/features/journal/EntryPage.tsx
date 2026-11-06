@@ -6,12 +6,20 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useChronicle } from '../../state/ChronicleContext';
-import { useEntry, useProject, useRevisions, useTasks } from '../../state/hooks';
+import {
+  useChapters,
+  useEntry,
+  useMemoryLinks,
+  usePaths,
+  useProject,
+  useRevisions,
+  useTasks
+} from '../../state/hooks';
 import { Badge, Button, Details, IconButton } from '../../ui/primitives';
 import { Icon } from '../../ui/Icon';
 import { ErrorState, SkeletonList } from '../../ui/states';
 import { MarkdownView } from '../../ui/MarkdownView';
-import { MetaLine, RelativeTime } from '../../ui/format';
+import { MetaLine, RelativeTime, WhenExactly, precisionNote } from '../../ui/format';
 import { EntryDialog } from './EntryDialog';
 import { formatDateLabel, formatDateTime } from '../../domain/time';
 
@@ -25,9 +33,23 @@ export function EntryPage() {
   const allTasks = useTasks({});
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /* A memory's place in the archive is half of what it means. These read the
+     published connections the user made (chapter, path, links), so the page can
+     offer a way back to the places this experience belongs to. */
+  const links = useMemoryLinks({ recordId: entryId, status: 'confirmed' });
+  const note = entry ? precisionNote(entry.occurred_precision) : null;
+  /* One read each, then look up by id — a hook cannot be called inside a map. */
+  const allChapters = useChapters();
+  const allPaths = usePaths();
+  const chapterNames = (entry?.links?.chapter_ids ?? [])
+    .map((id) => allChapters?.find((chapter) => chapter.id === id))
+    .filter((chapter): chapter is NonNullable<typeof chapter> => Boolean(chapter));
+  const pathNames = (entry?.links?.path_ids ?? [])
+    .map((id) => allPaths?.find((path) => path.id === id))
+    .filter((path): path is NonNullable<typeof path> => Boolean(path));
 
   if (entry === undefined) return <SkeletonList rows={3} />;
-  if (entry === null) return <ErrorState title="Entry not found" message="It may have been deleted or purged on this device." />;
+  if (entry === null) return <ErrorState title="Entry not found" message="It may have been deleted or purged." />;
 
   const tasks = (allTasks ?? []).filter((task) => task.source_entry_id === entry.id && !task.deleted_at);
 
@@ -44,21 +66,23 @@ export function EntryPage() {
 
   return (
     <div className="page">
-      <header className="page__header">
+      <header className="page__header entry__header">
         <div className="page__title">
           <div className="page__actions" style={{ gap: 'var(--space-2)' }}>
             <IconButton name="chevron-left" label="Back to journal" onClick={() => navigate('/journal')} />
             <h1>{entry.title || 'Untitled'}</h1>
           </div>
+          {/* One quiet line. The type, the exact date and the revision number are
+              all in the margin below or in History; a reader wants to know when
+              this happened, and whether the date is a guess. */}
           <MetaLine>
-            <Badge>{entry.type}</Badge>
-            <span>{formatDateTime(entry.occurred_at, timezone)}</span>
-            {entry.occurred_precision !== 'exact' ? <Badge>≈ {entry.occurred_precision}</Badge> : null}
-            {entry.occurred_source !== 'user' ? <span>· date from {entry.occurred_source}</span> : null}
+            <WhenExactly at={entry.occurred_at} precision={entry.occurred_precision} timezone={timezone} />
+            {note ? <span>· {note}</span> : null}
+            {entry.pinned ? <span>· pinned</span> : null}
             {entry.private ? (
-              <Badge>
-                <Icon name="lock" size={10} className="icon-inline" /> private
-              </Badge>
+              <span>
+                · <Icon name="lock" size={10} className="icon-inline" /> private
+              </span>
             ) : null}
           </MetaLine>
         </div>
@@ -68,36 +92,65 @@ export function EntryPage() {
         </div>
       </header>
 
-      {project && (
-        <div>
-          <Link to={`/projects/${project.id}`} className="tagchip">
-            <Icon name="folder" size={13} className="icon-inline" /> {project.name}
-          </Link>
-        </div>
-      )}
+      {/* The writing, not a box around the writing. A card frame here made a
+          page of prose look like a form field, and the frame set the line length
+          to the width of the page — 121 characters at 1440px. `.entry__prose`
+          holds the reading measure. */}
+      <article className="entry__prose">
+        <MarkdownView source={entry.body} />
 
-      <article className="card">
-        <div className="card__body">
-          <MarkdownView source={entry.body} />
-          {entry.tags.length > 0 && (
-            <div className="chip-row" style={{ marginTop: "var(--space-4)" }}>
-              {entry.tags.map((tag) => (
-                <Link key={tag} to={`/search?q=${encodeURIComponent(tag)}`} className="tagchip">
-                  #{tag}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+        {(chapterNames.length > 0 || pathNames.length > 0 || project || entry.tags.length > 0) && (
+          <div className="entry__where">
+            {chapterNames.length > 0 || pathNames.length > 0 ? (
+              <p className="entry__where-line">
+                <span className="entry__where-label">Filed in</span>{' '}
+                {chapterNames.map((chapter, index) => (
+                  <span key={chapter.id}>
+                    {index > 0 ? ', ' : ''}
+                    <Link to={`/chapters/${chapter.id}`}>{chapter.name}</Link>
+                  </span>
+                ))}
+                {chapterNames.length > 0 && pathNames.length > 0 ? ', ' : ''}
+                {pathNames.map((path, index) => (
+                  <span key={path.id}>
+                    {index > 0 ? ', ' : ''}
+                    <Link to={`/paths/${path.id}`}>{path.title}</Link>
+                  </span>
+                ))}
+              </p>
+            ) : null}
+            {project ? (
+              <p className="entry__where-line">
+                <span className="entry__where-label">Project</span>{' '}
+                <Link to={`/projects/${project.id}`}>{project.name}</Link>
+              </p>
+            ) : null}
+            {entry.tags.length > 0 ? (
+              <div className="chip-row" style={{ marginTop: 'var(--space-1)' }}>
+                {entry.tags.map((tag) => (
+                  <Link key={tag} to={`/search?q=${encodeURIComponent(tag)}`} className="tagchip">
+                    #{tag}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
       </article>
 
-      <div className="entrycard__meta">
-        <span>Evidence level</span>
-        <Badge tone={entry.evidence_level === 'concept' ? 'neutral' : 'accent'}>{entry.evidence_level}</Badge>
-        <span className="text-xs text-faint">
-          {entry.evidence.length > 0 ? `${entry.evidence.length} reference${entry.evidence.length === 1 ? '' : 's'} attached` : 'no evidence attached yet'}
-        </span>
-      </div>
+      {/* The map is the other half of a memory: where it sits among everything
+          else. Offering it once, at the end of the writing, is enough. */}
+      <p className="entry__map-link">
+        <Link to={`/map?focus=${entry.id}`}>
+          <Icon name="compass" size={13} className="icon-inline" /> Show on the Life map
+        </Link>
+        {(links ?? []).length > 0 ? (
+          <span className="text-faint">
+            {' '}
+            · {links?.length} connection{links?.length === 1 ? '' : 's'} there
+          </span>
+        ) : null}
+      </p>
 
       {tasks.length > 0 && (
         <section aria-label="Tasks from this entry">
@@ -160,7 +213,11 @@ export function EntryPage() {
       )}
 
       <p className="text-xs text-faint">
-        Created <RelativeTime at={entry.created_at} timezone={timezone} /> · revision {entry.rev}
+        {/* Provenance for the curious, kept to one line: when it was written, and
+            how much it has changed. The verbatim capture and the revision list
+            are below, folded. */}
+        Written <RelativeTime at={entry.created_at} timezone={timezone} />
+        {entry.evidence.length > 0 ? ` · ${entry.evidence.length} reference${entry.evidence.length === 1 ? '' : 's'}` : ''}
       </p>
 
       <EntryDialog open={editing} entry={entry} onClose={() => setEditing(false)} />

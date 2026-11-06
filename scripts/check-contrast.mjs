@@ -167,6 +167,7 @@ const PAIRS = [
   { fg: '--map-ink-collection', bg: '--map-fill-collection', min: TEXT_MIN, use: 'map collection label' },
   { fg: '--color-text', bg: '--map-canvas', min: TEXT_MIN, use: 'map text on canvas' },
   { fg: '--color-text-muted', bg: '--map-canvas', min: TEXT_MIN, use: 'map secondary text on canvas' },
+  { fg: '--map-uncertain', bg: '--map-canvas', min: TEXT_MIN, use: 'map "date not exact" annotation' },
   { fg: '--map-edge', bg: '--map-canvas', min: UI_MIN, use: 'map edge line' },
   { fg: '--map-edge-strong', bg: '--map-canvas', min: UI_MIN, use: 'selected map edge' },
   { fg: '--map-self', bg: '--map-fill-experience', min: TEXT_MIN, use: 'map centre label' },

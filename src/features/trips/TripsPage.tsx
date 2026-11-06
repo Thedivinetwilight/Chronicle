@@ -18,10 +18,12 @@ import { useChronicle } from '../../state/ChronicleContext';
 import { useEntries, usePlaces, useTrip, useTrips } from '../../state/hooks';
 import type { Trip } from '../../domain/types';
 import { formatDateLabel } from '../../domain/time';
+import { WhenItHappened } from '../../ui/format';
 import { Badge, Button, Field, IconButton, TextArea, TextInput } from '../../ui/primitives';
 import { Dialog } from '../../ui/Dialog';
 import { EmptyState, ErrorState, SkeletonList } from '../../ui/states';
 import { Icon } from '../../ui/Icon';
+import { Cover } from '../../ui/art/Cover';
 
 function tripDates(trip: Trip): string {
   if (trip.start_date && trip.end_date) return `${formatDateLabel(trip.start_date)} – ${formatDateLabel(trip.end_date)}`;
@@ -59,26 +61,26 @@ export function TripsPage() {
       ) : null}
 
       {trips.length === 0 ? (
-        <EmptyState icon="plane" title="No trips recorded">
-          A trip can be as small as an overnight bus. Add one when you want its places and dates kept together.
-          <div style={{ marginTop: 'var(--space-3)' }}>
-            <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
-              Add a trip
-            </Button>
-          </div>
+        <EmptyState
+          mark="ridge"
+          compact
+          title="No trips yet"
+        >
+          Keep a journey's places and dates together.
         </EmptyState>
       ) : (
-        <div className="card list">
+        <div className="covershelf covershelf--wide">
           {trips.map((trip) => (
-            <Link key={trip.id} to={`/trips/${trip.id}`} className="list__item entrycard">
-              <span className="entrycard__title">
-                <Icon name="plane" size={15} className="icon-inline" /> {trip.name}
+            <Link key={trip.id} to={`/trips/${trip.id}`} className="covershelf__item rowlink">
+              <span className="coverframe">
+                <Cover kind="trip" id={trip.id} name={trip.name} />
               </span>
-              <span className="entrycard__meta">
+              <span className="covershelf__name">{trip.name}</span>
+              <span className="covershelf__meta">
                 {tripDates(trip)}
                 {trip.place_ids.length > 0 ? ` · ${trip.place_ids.length} place${trip.place_ids.length === 1 ? '' : 's'}` : ''}
-                {trip.sensitive_notes ? ' · has private details' : ''}
               </span>
+              {trip.sensitive_notes ? <span className="covershelf__flag">Has private details</span> : null}
             </Link>
           ))}
         </div>
@@ -91,7 +93,7 @@ export function TripsPage() {
 
 export function TripPage() {
   const { tripId } = useParams();
-  const { store, toast } = useChronicle();
+  const { store, toast, timezone } = useChronicle();
   const trip = useTrip(tripId);
   const places = usePlaces();
   const entries = useEntries({});
@@ -101,7 +103,7 @@ export function TripPage() {
   const [error, setError] = useState<string | null>(null);
 
   if (trip === undefined) return <SkeletonList rows={3} />;
-  if (trip === null) return <ErrorState title="Trip not found" message="It may have been deleted on this device." />;
+  if (trip === null) return <ErrorState title="Trip not found" message="It may have been deleted." />;
 
   const tripPlaces = (places ?? []).filter((place) => trip.place_ids.includes(place.id));
   // An experience is shown as part of the trip only when its text names one of
@@ -182,7 +184,7 @@ export function TripPage() {
           </div>
           <p className="text-xs text-faint" style={{ marginBottom: 'var(--space-2)' }}>
             Booking references and confirmation numbers. Hidden by default, never included in a share preview, and
-            never sent anywhere by Chronicle.
+            never leaves this device.
           </p>
           <div className="sensitive" aria-live="polite">
             {revealed ? (
@@ -215,7 +217,9 @@ export function TripPage() {
               {related.map((entry) => (
                 <Link key={entry.id} to={`/journal/${entry.id}`} className="list__item entrycard">
                   <span className="entrycard__title">{entry.title || 'Untitled experience'}</span>
-                  <span className="entrycard__meta">{formatDateLabel(entry.occurred_at.slice(0, 10))}</span>
+                  <span className="entrycard__meta">
+                    <WhenItHappened at={entry.occurred_at} precision={entry.occurred_precision} timezone={timezone} unknownLabel="Date not recorded" />
+                  </span>
                 </Link>
               ))}
             </div>

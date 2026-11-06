@@ -12,7 +12,7 @@ import type { EntryType } from '../../domain/types';
 import { Badge, Button, Select } from '../../ui/primitives';
 import { Icon } from '../../ui/Icon';
 import { EmptyState, SkeletonList } from '../../ui/states';
-import { MetaLine, RelativeTime } from '../../ui/format';
+import { MetaLine, WhenItHappened, precisionNote } from '../../ui/format';
 import { EntryDialog } from './EntryDialog';
 import type { JournalEntry } from '../../domain/types';
 
@@ -89,7 +89,7 @@ export function JournalPage() {
       {entries === undefined ? <SkeletonList rows={5} /> : null}
 
       {entries && entries.length === 0 ? (
-        <EmptyState icon="book" title="No entries match">
+        <EmptyState mark="quill" title="No entries match">
           {projectId || type !== 'all' || tag
             ? 'Try clearing a filter.'
             : 'Your journal starts with one honest sentence about what happened.'}
@@ -120,7 +120,8 @@ export function JournalPage() {
             <div className="entrycard__preview">{entry.summary || entry.body}</div>
             <MetaLine>
               <Badge>{entry.type}</Badge>
-              <RelativeTime at={entry.occurred_at} timezone={timezone} />
+              <WhenItHappened at={entry.occurred_at} precision={entry.occurred_precision} timezone={timezone} />
+              {precisionNote(entry.occurred_precision) ? ` · ${precisionNote(entry.occurred_precision)}` : ''}
               {entry.evidence_level !== 'concept' ? <Badge tone="accent">{entry.evidence_level}</Badge> : null}
               {entry.tags.slice(0, 3).map((t) => (
                 <span key={t} className="tagchip">

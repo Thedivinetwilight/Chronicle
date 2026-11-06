@@ -11,17 +11,9 @@ import { useChronicle } from '../../state/ChronicleContext';
 import { useProjects, useTimeline } from '../../state/hooks';
 import type { TimelineEvent, TimelineKind } from '../../data/store';
 import { localDateIso } from '../../domain/time';
-import { Badge, Button, Segmented, Select } from '../../ui/primitives';
-import { Icon, type IconName } from '../../ui/Icon';
+import { Button, Segmented, Select } from '../../ui/primitives';
 import { EmptyState, SkeletonList } from '../../ui/states';
 import { DayHeader, MetaLine, RelativeTime } from '../../ui/format';
-
-const KIND_ICON: Record<TimelineKind, IconName> = {
-  entry: 'book',
-  milestone: 'flag',
-  task: 'task',
-  project: 'folder'
-};
 
 const KIND_LABEL: Record<TimelineKind, string> = {
   entry: 'Journal',
@@ -108,29 +100,47 @@ export function TimelinePage() {
       {visible === undefined ? <SkeletonList rows={5} /> : null}
 
       {visible && visible.length === 0 ? (
-        <EmptyState icon="history" title="Nothing here yet">
-          Capture something, or clear the filters, and the timeline fills in.
+        <EmptyState mark="sun" compact title="Nothing here yet">
+          Capture something, or clear the filters.
         </EmptyState>
       ) : null}
 
       {visible && visible.length > 0 && (
         <div className="timeline">
           {visible.map((event, index) => {
+            /* An undated memory is stored at the moment it was written so that
+               it has an order at all. Burying it under that day's header would
+               assert a date the record explicitly does not claim, so it gets
+               its own small heading and is listed in the order it was written. */
+            const undated = event.precision === 'unknown';
             const day = event.date || localDateIso(event.occurred_at, timezone);
             const previous = visible[index - 1];
-            const newDay = !previous || (previous.date || localDateIso(previous.occurred_at, timezone)) !== day;
+            const previousUndated = previous ? previous.precision === 'unknown' : false;
+            const newDay = undated
+              ? !previousUndated
+              : !previous || previousUndated || (previous.date || localDateIso(previous.occurred_at, timezone)) !== day;
             return (
               <div className="timeline__day" key={event.id}>
-                {newDay ? <DayHeader date={day} timezone={timezone} /> : null}
+                {newDay && undated ? (
+                  <div className="timeline__day-label">Undated</div>
+                ) : newDay ? (
+                  <DayHeader date={day} timezone={timezone} />
+                ) : null}
                 <Link className="list__item entrycard" to={event.path}>
+                  {/* No leading glyph. At 15px the outlined set read as a
+                      smudge before the title, and the meta line already names
+                      the kind in words — a second, worse signal. */}
                   <div className="entrycard__title">
-                    <Icon name={KIND_ICON[event.kind]} size={15} className="icon-inline" />
                     <span>{event.title}</span>
                   </div>
                   <MetaLine>
                     <span>{KIND_LABEL[event.kind]}</span>
                     <span>·</span>
-                    <RelativeTime at={event.occurred_at} timezone={timezone} />
+                    {event.precision === 'unknown' ? (
+                      <span className="text-muted">date not recorded</span>
+                    ) : (
+                      <RelativeTime at={event.occurred_at} timezone={timezone} />
+                    )}
                     {event.project_name ? (
                       <>
                         <span>·</span>
@@ -143,14 +153,11 @@ export function TimelinePage() {
                         <span>edited</span>
                       </>
                     ) : null}
-                    {event.private ? (
-                      <Badge>
-                        <Icon name="lock" size={10} /> private
-                      </Badge>
-                    ) : null}
-                    {event.evidence_level && event.evidence_level !== 'concept' ? (
-                      <Badge tone="accent">{event.evidence_level}</Badge>
-                    ) : null}
+                    {/* `private` is deliberately not repeated on every row.
+                        This archive is private by default, so the badge marked
+                        nothing while appearing on all of them. Privacy is
+                        stated once on the record's own page and on the share
+                        preview, where it changes what you can do. */}
                   </MetaLine>
                   {event.subtitle ? <div className="entrycard__preview">{event.subtitle}</div> : null}
                 </Link>

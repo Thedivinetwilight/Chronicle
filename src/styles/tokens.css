@@ -166,10 +166,21 @@
   /* -- life map — a constellation on obsidian ------------------------------
      Inks are luminous but desaturated; fills are tinted graphite. Every
      ink/own-fill pair clears 4.5:1 (verified). */
+  /* -- artwork ------------------------------------------------------------
+     Plate washes are warm, low-chroma tints of the page so a cover never sits
+     on the surface like a sticker. Inks are one step brighter than the border
+     so line work reads as drawn-on rather than as UI chrome. */
+  --art-ink: #b9b4a9;
+  --art-ink-soft: rgba(240, 238, 233, 0.22);
+  --art-wash-a: #1d1a19;
+  --art-wash-b: #1a1c20;
+  --art-wash-c: #201c22;
+  --art-paper: #16171b;
+
   --map-canvas: #0d0e11;
   --map-canvas-deep: #090a0c;
   --map-grid: rgba(240, 238, 233, 0.045);
-  --map-edge: #6e7078;
+  --map-edge: #8d8f98;
   --map-edge-strong: #9a9da6;
   --map-self: #a9a0e8;
   --map-self-soft: rgba(169, 160, 232, 0.15);
@@ -190,7 +201,10 @@
   --map-fill-trip: #161f25;
   --map-fill-collection: #22200f;
 
-  --map-uncertain: rgba(240, 238, 233, 0.17);
+  /* The little "date not exact" / "undated" annotation. It was 17% white —
+     roughly 1.4:1 on the canvas, so it ghosted rather than read. Annotations
+     still have to be legible: this is the faint text ink, not a wash. */
+  --map-uncertain: #918f87;
 }
 
 /* ===========================================================================
@@ -250,10 +264,18 @@
      the nav never disagree about the product colour. */
   --gradient-page: radial-gradient(1100px 600px at 14% -12%, rgba(74, 62, 156, 0.045), transparent 64%);
 
+  /* -- artwork ------------------------------------------------------------ */
+  --art-ink: #8a8479;
+  --art-ink-soft: rgba(26, 25, 23, 0.18);
+  --art-wash-a: #f0ebe1;
+  --art-wash-b: #eeece6;
+  --art-wash-c: #f2ece7;
+  --art-paper: #fbf8f2;
+
   --map-canvas: #f6f3ec;
   --map-canvas-deep: #efebe1;
   --map-grid: rgba(26, 25, 23, 0.05);
-  --map-edge: #7c776e;
+  --map-edge: #6a655c;
   --map-edge-strong: #57534a;
   --map-self: #4a3e9c;
   --map-self-soft: rgba(74, 62, 156, 0.1);
@@ -274,7 +296,7 @@
   --map-fill-trip: #ddeaf0;
   --map-fill-collection: #f0edd2;
 
-  --map-uncertain: rgba(26, 25, 23, 0.16);
+  --map-uncertain: #6e6a62;
 }
 
 /* ===========================================================================

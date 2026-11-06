@@ -18,17 +18,28 @@ import { useChapters, useEntries, usePaths, useTrips } from '../../state/hooks';
 import { formatDateLabel, localDateIso, todayIso } from '../../domain/time';
 import { Badge, Button } from '../../ui/primitives';
 import { Icon } from '../../ui/Icon';
-import { EmptyState, SkeletonList } from '../../ui/states';
-import { RelativeTime } from '../../ui/format';
+import { DayPlate } from '../../ui/art/Mark';
+import { Cover } from '../../ui/art/Cover';
+import { SkeletonList } from '../../ui/states';
+import { WhenItHappened, precisionNote } from '../../ui/format';
 import { EntryDialog } from '../journal/EntryDialog';
 import type { JournalEntry } from '../../domain/types';
 
-function greeting(): string {
+/**
+ * A journal's masthead is its date, not a greeting.
+ *
+ * "Good afternoon" is the software being cheerful at you; on a page you return
+ * to several times a day it is also wrong more often than it is right. The date
+ * is the one thing that is always true and always wanted, and it is what a
+ * printed diary prints. The hour still shapes the small line beneath it, which
+ * is where a personal note belongs.
+ */
+function dayShape(): string {
   const hour = new Date().getHours();
-  if (hour < 5) return 'Late night';
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (hour < 5) return 'Late. Worth writing down.';
+  if (hour < 12) return 'Morning';
+  if (hour < 17) return 'Afternoon';
+  return 'Evening';
 }
 
 export function HomePage() {
@@ -86,14 +97,16 @@ export function HomePage() {
 
   return (
     <div className="page">
-      <header className="page__header">
-        <div className="page__title page__title--display">
-          <span className="eyebrow">{formatDateLabel(today)}</span>
-          <h1>{greeting()}</h1>
+      {/* A dated masthead, not a greeting. "Good afternoon" is the software
+          being cheerful at you; the date is the thing you actually want when you
+          open a journal. Privacy is stated once, in Settings and on the share
+          preview, instead of as a badge on every screen. */}
+      <header className="today__masthead">
+        <div className="today__masthead-copy">
+          <span className="eyebrow">{dayShape()}</span>
+          <h1 className="today__title">{formatDateLabel(today)}</h1>
         </div>
-        <span className="badge">
-          <Icon name="lock" size={11} className="icon-inline" /> Private to you
-        </span>
+        <DayPlate width={132} height={76} className="today__masthead-mark" />
       </header>
 
       {/* The one thing this page wants you to do. Everything else is below. */}
@@ -126,7 +139,7 @@ export function HomePage() {
         ) : null}
         <div className="composer__bar">
           <span className="composer__hint" id="capture-hint">
-            Saves privately, instantly. Add a date, chapter or path later if you want.
+            Ctrl or ⌘ + Enter to save.
           </span>
           <div className="chip-row">
             <Button
@@ -153,24 +166,25 @@ export function HomePage() {
       {entries === undefined ? <SkeletonList rows={3} /> : null}
 
       {emptyArchive ? (
-        <EmptyState icon="book" title="Your archive is empty — that is a fine place to start">
-          Write one thing above: something that happened, something you noticed, something you want to remember. It
-          stays on this device unless you export it.
-          <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <Link to="/chapters" className="btn">
-              <Icon name="layers" size={15} /> Create a chapter
-            </Link>
-            <Link to="/roadmap" className="btn btn--quiet">
-              What else is planned
+        /* A small, composed first-run panel. Four lines of instruction told
+           people what the box above already said; the plate gives the empty
+           state a point of view instead of explaining itself. */
+        <section className="today__first" aria-label="Getting started">
+          <Cover kind="chapter" id="first-run" name="Chronicle" className="today__first-plate" />
+          <div className="today__first-copy">
+            <h2>Nothing here yet</h2>
+            <p className="text-sm text-muted">Write the first thing above. Nothing leaves this device.</p>
+            <Link to="/chapters" className="btn btn--quiet">
+              Name a chapter
             </Link>
           </div>
-        </EmptyState>
+        </section>
       ) : null}
 
       {todayEntries.length > 0 ? (
         <section aria-label="Today so far">
           <div className="section-head">
-            <h2 className="section-head__title">Today, in your words</h2>
+            <h2 className="section-head__title">Today</h2>
             <Link to="/journal" className="section-head__link">
               Journal <Icon name="chevron-left" size={12} style={{ transform: 'rotate(180deg)' }} />
             </Link>
@@ -178,37 +192,23 @@ export function HomePage() {
           <div className="card">
             <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               {todayEntries.map((entry, index) => (
-                <div key={entry.id} style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                <div className="today__row" key={entry.id}>
                   {/* A quiet timeline rail: today's notes read as a sequence. */}
-                  <div aria-hidden="true" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <span
-                      style={{
-                        width: 7,
-                        height: 7,
-                        marginTop: 7,
-                        borderRadius: '999px',
-                        background: index === 0 ? 'var(--color-accent)' : 'var(--color-border-strong)',
-                        flex: 'none'
-                      }}
-                    />
-                    {index < todayEntries.length - 1 ? (
-                      <span style={{ width: 1, flex: 1, background: 'var(--color-border)' }} />
-                    ) : null}
+                  <div className="today__rail" aria-hidden="true">
+                    <span className={index === 0 ? 'today__dot today__dot--lead' : 'today__dot'} />
+                    {index < todayEntries.length - 1 ? <span className="today__thread" /> : null}
                   </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
+                  <div className="today__row-body">
                     <Link to={`/journal/${entry.id}`} className="entrycard__title">
                       {entry.title || firstLine(entry.body) || 'Untitled'}
                     </Link>
                     <div className="entrycard__meta">
-                      <RelativeTime at={entry.occurred_at} timezone={timezone} />
+                      <WhenItHappened at={entry.occurred_at} precision={entry.occurred_precision} timezone={timezone} />
                       {entry.links?.chapter_ids.length ? ' · in a chapter' : ''}
                     </div>
                   </div>
                 </div>
               ))}
-              <p className="text-xs text-faint" style={{ paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-border)' }}>
-                Assembled only from what you wrote today. Chronicle has not summarised, interpreted or added anything.
-              </p>
             </div>
           </div>
         </section>
@@ -364,12 +364,17 @@ export function HomePage() {
 function RecentRow({ entry, showPrivacy }: { entry: JournalEntry; showPrivacy: boolean }) {
   const { timezone } = useChronicle();
   const preview = firstLine(entry.body);
+  const note = precisionNote(entry.occurred_precision);
   return (
     <Link to={`/journal/${entry.id}`} className="list__item entrycard">
       <span className="entrycard__title">{entry.title || preview || 'Untitled experience'}</span>
       <span className="entrycard__meta">
-        <RelativeTime at={entry.occurred_at} timezone={timezone} />
-        {entry.occurred_precision !== 'exact' ? ' · approximate' : ''}
+        <WhenItHappened at={entry.occurred_at} precision={entry.occurred_precision} timezone={timezone} />
+        {/* "approximate" on every row that was not literally `exact` was wrong
+            twice over, and had been copy-pasted into three files. Both the date
+            and the note come from helpers so they cannot describe different
+            things. */}
+        {note ? ` · ${note}` : ''}
         {entry.private && showPrivacy ? (
           <Badge>
             <Icon name="lock" size={10} className="icon-inline" /> private

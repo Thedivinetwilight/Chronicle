@@ -377,24 +377,6 @@ export function formatRelative(
   return formatDateLabel(localDay);
 }
 
-/** A human description of how precise a date value is. */
-export function precisionLabel(precision: DatePrecision): string {
-  switch (precision) {
-    case 'exact':
-      return 'exact time';
-    case 'day':
-      return 'date only';
-    case 'week':
-      return 'approximate week';
-    case 'month':
-      return 'approximate month';
-    case 'year':
-      return 'approximate year';
-    default:
-      return 'date unknown';
-  }
-}
-
 /**
  * Normalize an instant to the precision the user actually stated, so that a
  * "last week" event is not displayed as a precise moment.

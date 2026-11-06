@@ -16,7 +16,6 @@ import { Dialog } from '../../ui/Dialog';
 import { Icon } from '../../ui/Icon';
 import { Badge, Button, Field, Segmented, Select, Switch, TextArea, TextInput } from '../../ui/primitives';
 import { useChronicle } from '../../state/ChronicleContext';
-import { getAiSessionKey } from '../../state/aiSession';
 import { ENTRY_TYPE_OPTIONS } from '../../state/hooks';
 import type {
   CaptureProposal,
@@ -36,7 +35,6 @@ import { normalizeTags } from '../../domain/text';
 // which froze the Save button with a spinner and no error to show. Capture is
 // a core feature (§28), so its code is loaded with the app, not on demand.
 import { analyzeCapture } from '../../domain/capture/analyzer';
-import { selectProvider } from '../../domain/capture/provider';
 
 type Phase = 'compose' | 'working' | 'review' | 'saved';
 
@@ -136,21 +134,17 @@ export function CaptureDialog() {
         ...projectList.current.map((project) => ({ value: project.id, label: project.name }))
       ];
 
-      const provider = settings
-        ? selectProvider(
-            {
-              enabled: settings.ai.enabled,
-              provider: settings.ai.provider,
-              endpoint: settings.ai.endpoint,
-              model: settings.ai.model,
-              allowPrivate: settings.ai.allow_private
-            },
-            getAiSessionKey()
-          )
-        : null;
-      const analysed = provider
-        ? await provider.analyze(text, context)
-        : { proposal: analyzeCapture({ input: text, context }), usedRemote: false, notices: [] };
+      /* V0.3 runs the on-device analyzer only, always.
+         The remote provider (`selectProvider` + the validated HTTP client) is
+         deliberately kept — it is the architecture a later opt-in release will
+         bring back — but it is not reachable from the app in this release, and
+         its Settings interface has been removed. The local analyzer is
+         deterministic, works offline, and touches no network. */
+      const analysed = {
+        proposal: analyzeCapture({ input: text, context }),
+        usedRemote: false as const,
+        notices: [] as string[]
+      };
       mark(analysed.usedRemote ? 'analyze:done(remote)' : 'analyze:done(local)');
 
       const found = analysed.proposal;
@@ -416,7 +410,7 @@ export function CaptureDialog() {
               options={[
                 { value: 'quick', label: 'Quick' },
                 { value: 'review', label: 'Review' },
-                { value: 'autonomous', label: 'Autonomous' }
+                { value: 'autonomous', label: 'Silent' }
               ]}
             />
           </Field>
@@ -425,7 +419,7 @@ export function CaptureDialog() {
               ? 'Saves straight away when the reading is confident; anything ambiguous is shown for review first.'
               : mode === 'review'
                 ? 'Always shows what Chronicle understood before anything is written.'
-                : 'Writes without asking. Corrections remain available afterwards; enable only if that suits you.'}
+                : 'Files without asking first. You can correct anything afterwards.'}
           </p>
           {error ? (
             <p className="notice notice--danger" role="alert">
@@ -678,11 +672,6 @@ export function CaptureDialog() {
             </div>
           ) : null}
 
-          {settings?.ai.enabled && settings.ai.provider === 'http' ? (
-            <p className="text-xs text-faint">
-              AI assistance is on. The model suggested structure only; your text was never rewritten.
-            </p>
-          ) : null}
         </div>
       )}
 

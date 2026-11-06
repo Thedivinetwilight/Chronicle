@@ -20,6 +20,55 @@ semantic hues are 107°/151°/117° apart from the accent.
 The palette is two deliberate schemes, not one inverted: dark is the default
 block, light is a companion worked out on its own warm paper.
 
+### Copy rules (applied across the V0.3 sweep)
+
+Every visible sentence has to earn its place. The rules that removed the most
+text:
+
+1. **Privacy is stated once per context, not once per screen.** The archive
+   never leaves the device; repeating that on Today, in the entry editor, on
+   Settings and again on the share preview turned a fact into a nervous tic. It
+   now appears where a user would actually ask the question: the first-run
+   panel, the private toggle, Settings' storage line, and the share preview's
+   "nothing is published" notice.
+2. **Hint, don't repeat.** A control's hint says what will happen; it does not
+   restate the label. "Private" now reads "Kept out of share previews. Nothing
+   is published either way." rather than explaining the build's architecture
+   inside a switch.
+3. **A masthead is a date, not a greeting.** Today's `h1` is `4 Nov 2026`, with
+   a time-of-day eyebrow above it (`Morning` / `Afternoon` / `Evening`, and
+   `Late. Worth writing down.` after midnight). "Good afternoon" is the software
+   being cheerful at you, and it is wrong more often than it is right.
+4. **Teach the shortcut where the shortcut is.** The composer's hint is now
+   `Ctrl or ⌘ + Enter to save` instead of repeating where the text is stored.
+5. **No error string explains the device.** "It may have been deleted." not
+   "…deleted on this device." Nothing else could have happened to it.
+
+### Honest labels
+
+`autonomous` (a stored capture-mode value) is labelled **Silent** in the UI. The
+engine is a local rule-based parser; "Autonomous" implied an agent making
+decisions on the user's behalf. The stored value is unchanged, so no migration
+was needed, and the mode still behaves exactly as before: files without asking,
+corrections available afterwards.
+
+**Dates the record does not claim.** `occurred_precision` is
+`exact | day | week | month | year | unknown`. Only `week`, `month` and `year`
+are approximations; `day` is exact to the day and `unknown` is the opposite of a
+guess. `unknown` records are stored at the moment of writing so lists have an
+order, which means **the stored instant is never printed for them**. Use the
+helpers in `src/ui/format.tsx`:
+
+- `WhenItHappened` — relative time for lists.
+- `WhenExactly` — full timestamp for detail views.
+- `precisionNote` — `week only` / `month only` / `year only`, and `null` for
+  `exact`, `day` and `unknown` (those two helpers already speak for `unknown`).
+
+Both `When*` components render `Date not recorded` in place of a timestamp when
+the precision is `unknown`, so a date and a disclaimer can never disagree. Never
+slice `occurred_at` to ten characters — `when.test.tsx` fails the build if a page
+does.
+
 ## 2. Tokens
 
 ### Colour (verified by `npm run contrast`)
@@ -118,6 +167,102 @@ Distinctive surfaces, all token-driven:
 - **State halo**: soft circle behind empty/error icons.
 - **Sheet grip**: 36×4 px bar that marks dismissible bottom sheets.
 
+## 4b. Artwork (V0.3)
+
+All artwork is hand-authored SVG in this repository — no icon packs, no stock
+vectors, no generated imagery, no emoji as icons. Two families:
+
+### Marks — `src/ui/art/Mark.tsx`
+
+A single closed set of 14 line marks on a **24×24 grid, `stroke-width: 1.5`,
+round caps and joins, `fill="none"`, `currentColor`**: `sprig`, `frond`, `moon`,
+`sun`, `wave`, `ridge`, `compass`, `feather`, `shell`, `seed`, `star`, `route`,
+`quill`, `leaf-cluster`.
+
+**Nine are wired** — one per sidebar destination, via `SECTION_MARKS`, shown in
+the nav and again in that section's empty state. The remaining five (`frond`,
+`moon`, `wave`, `seed`, `star`) are drawn but unused. That is a deliberate reserve
+rather than a finished set: they exist so a future destination can be given a
+mark in the same hand without inventing a new style, and `art.test.ts` keeps them
+held to the same grid and stroke rules. Do not present the family as "in use"
+until it is.
+
+`nav.ts` is the single source of the navigation model so the mark/data pairing can
+be asserted directly — including that no destination reuses a glyph another
+destination already claims (`art.test.ts`, "art direction consistency"). That
+test exists because the Life map's mark and Roadmap's icon were both a compass.
+
+| Section | Mark | Reads as |
+| --- | --- | --- |
+| Today | `sun` | the day itself |
+| Life map | `compass` | orientation, not distance |
+| Journal | `quill` | the written record |
+| Chapters | `sprig` | something that grew over a season |
+| Paths | `route` | a direction with a turn in it |
+| Trips | `ridge` | ground crossed |
+| Places & people | `shell` | something found and kept |
+| Collections | `leaf-cluster` | gathered by hand |
+| Share preview | `feather` | a light impression, not a post |
+
+`SECTION_MARKS` maps each destination to its mark so the shell and the page
+cannot drift apart. A mark is **decorative by default** (`aria-hidden="true"`,
+no `<title>`); pass `title` and it becomes `role="img"` with a real `<title>`. A
+mark next to a visible text label always stays decorative — the label already
+names the thing, and a duplicate announcement is noise.
+
+`EmptyState` takes either a `mark` (a section, which gets the same drawing as its
+nav entry) or an `icon` (a utility state such as search or a failed import, which
+has no section and keeps the icon set).
+
+`DayPlate` is a second, finer plate (**56×36, `stroke-width: 0.9`**) drawn for
+the Today masthead: a sun behind a sea horizon that is deliberately broken where
+the disc crosses it, three water lines, two reeds in the right margin. The break
+matters — a centred disc on a continuous horizon reads as a face, not a
+landscape. It is hidden below 560 px, where it would render under 1 px per unit
+and become noise; the date carries the mobile masthead alone.
+
+### Cover plates — `src/ui/art/Cover.tsx`
+
+Records get a printed-plate cover rather than a thumbnail. `buildCover(kind, id,
+name)` is **deterministic**: the same record always produces the same plate, and
+a rename visibly shifts it. It hashes `kind:id:name` into a motif and a wash
+pair, so plates differ without storing anything and without inventing imagery
+that pretends to depict the record.
+
+- Kinds: `chapter | path | collection | trip` (120×84 view box).
+- Motifs: contour, strata, hachure, orbit, ripple, grid-cut.
+- Ink `#b9b4a9` dark / `#8a8479` light; washes from `--art-wash-a/b/c`.
+- Ripple rings are clamped by `maxRw` to the origin's distance to each edge —
+  without the clamp the view box silently clips them and it reads as a render
+  fault rather than a drawing.
+- Contour rings **drift** and every other ring is left open. Perfectly nested
+  closed loops around one centre read as a ball of yarn: the eye follows the
+  loops instead of the landform, and two chapters that both drew `contour` were
+  indistinguishable. Real contours walk downhill and run open off the plate.
+
+**Proportion is a contract.** The plate's box is always 120:84 —
+
+- the SVG declares `aspect-ratio: 120 / 84` and carries no height prop, so it
+  fills whatever box its container gives it;
+- `.coverframe` declares the same ratio, because the frame is what a grid or
+  flex track actually sizes;
+- `preserveAspectRatio="xMidYMid slice"` then has nothing to crop.
+
+Both failure modes were shipped and both are now guarded. With a *fixed* height
+prop and a fluid width the boxes came out 1.9–3.1:1 around a 1.43:1 drawing, so
+`slice` silently cropped a quarter to half of every plate. Switching to `meet`
+without fixing the box was worse: the wash letterboxed into a bare strip down
+one side, because a plate is a filled rectangle, not a floating drawing.
+`art.test.ts` asserts the markup contract and `flows.mjs` measures the result in
+a real browser (ratio within 0.02 of 1.43, wash within 1.5 px of the box).
+
+Shelf density follows from this: tracks at `min(100%, 190px)` and a `250px`
+cap when a shelf holds one item, so a plate sits around 200×140 rather than
+dominating the page at 318×224.
+
+`art.test.ts` enforces the invariants above, including one stroke weight per
+family and the absence of `<image>`, `<filter>` and `<linearGradient>`.
+
 ## 5. Accessibility rules (enforced in code and review)
 
 1. Every control has a visible label or `aria-label`; dialogs are labelled.
@@ -155,6 +300,52 @@ readable at a glance without becoming decoration. The rules were:
    anywhere in the palette.
 5. **Uncertainty has its own token.** `--map-uncertain` marks a node whose date
    or place is unknown; it is used with a text note, never as the sole signal.
+
+### Edge weights and the legend (V0.3)
+
+The map draws two kinds of line, and they used to differ only in colour — which
+failed for everyone who cannot separate two greys. In V0.3 the distinction is
+structural:
+
+| Line | Token / rule | Weight | Style |
+| --- | --- | --- | --- |
+| Spine (chronological path) | `--map-edge` | 1.4 | solid |
+| Link (associative connection) | `--map-edge` | 1.1 @ 0.85 | dashed `4 5` |
+| Selected | `--map-edge-strong` | 1.8 | solid |
+| Dimmed (filtered out) | — | — | opacity 0.12 |
+
+`--map-edge` was lifted to `#8d8f98` (dark) and `#6a655c` (light) so the spine
+stops disappearing into the canvas at the faint end of the range.
+
+The page carries a **shape legend** under the canvas — two columns of glyph +
+name, then a one-line note that links are dashed and that position means time,
+not importance. It replaced a paragraph of prose that explained the same thing
+in the abstract; a reader should not have to be taught a diagram in words.
+
+### Every drawn shape names its fill
+
+The map's most serious bug was a styling omission that only one theme revealed.
+`.lifemap__ring`, `.lifemap__shape-ring`, `.lifemap__shape-detail` and
+`.lifemap__uncertain` were used in the JSX but had **no CSS rule**, and neither
+did the bare `<circle>` glyphs for experience, path, person and trip. SVG
+defaults to `fill: black`, so:
+
+- in **light** mode three concentric black circles covered the warm canvas — the
+  whole map read as a black disc on paper;
+- in **dark** mode the same default made every experience a hollow ring on a
+  near-black field, i.e. invisible.
+
+Neither showed up in a measurement. Both are now enforced:
+
+1. **A shape names its filled/stroked class.** `.lifemap__shape--<kind>` carries
+   `fill` and `stroke` from `--map-fill-*` / `--map-ink-*`; a bare `<circle>` is
+   no longer acceptable.
+2. **Detail marks inherit their own kind's ink.** The person's head-and-shoulders
+   and the trip's cross previously shared one hard-coded person-blue.
+3. **Annotations are their own style.** `date not exact` is 9.5 px, in
+   `--map-uncertain`, haloed against the canvas — an annotation, not a name.
+4. `mapStyles.test.ts` reads the canvas source for every `lifemap__*` class and
+   fails if the stylesheet lacks a rule for it. A class name is not a style.
 
 ### Map interaction contract (implemented in `LifeMapCanvas.tsx`)
 
@@ -204,3 +395,23 @@ readable at every size:
   the structural nodes (chapters, paths) and the selected node are labelled;
   every node keeps its shape, position, accessible name and tap target, and the
   outline view remains the complete text route to the same records.
+
+The resolver's rules, all of which were learned from shipped defects:
+
+- **Widths are estimates and must over-estimate.** `CHAR_WIDTH` is the measured
+  advance of the label face, not a guess. Under-measuring is how labels came to
+  overlap and to run off the canvas.
+- **A character budget is not a pixel ceiling.** Text is never clipped in the
+  SVG, so a long label draws every character it was given. Convert the cap to a
+  character count and multiply back out.
+- **Annotations reserve space.** A node with `uncertain` or `undated` draws a
+  second line of text 13px from its label; `noteBox` reserves that band so no
+  other label is placed across it.
+- **Clearance, not mere non-intersection.** Two 11px text runs 0.5px apart read
+  as touching; placement requires 3px.
+- **Elide before overflowing.** If the text still cannot fit at its anchor, the
+  resolver shortens it and exposes the result as `placement.text`. The renderer
+  draws that; the accessible name and the outline keep the full title.
+
+`uncertain` and `undated` are different claims and carry different words —
+"date not exact" versus "undated" — and only `uncertain` is an approximation.

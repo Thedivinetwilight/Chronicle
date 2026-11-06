@@ -48,8 +48,10 @@ describe('shell', () => {
   it('boots to an honest empty home', async () => {
     renderAt('/');
     await screen.findByLabelText(/Write something that happened/i);
-    // Empty archive copy says what to do and what is not there yet.
-    expect(await screen.findByText(/Your archive is empty/i)).toBeTruthy();
+    // The first-run panel still tells you what to do and where the writing
+    // stays; it is short, not silent.
+    expect(await screen.findByText(/Nothing here yet/i)).toBeTruthy();
+    expect(screen.getByText(/Nothing leaves this device/i)).toBeTruthy();
     // The archive destinations are reachable from the shell.
     for (const label of ['Today', 'Life map', 'Journal', 'Chapters', 'Paths', 'Trips']) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);

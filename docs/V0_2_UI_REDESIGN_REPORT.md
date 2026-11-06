@@ -288,9 +288,15 @@ the flow run — zero console and page errors.
 
 ### Screenshots
 
-In `docs/screenshots/`: `dark-d-today`, `light-d-today`, `dark-m-today`,
-`dark-m-journal`, `dark-d-map`, `dark-m-map`, `m-more`, `dark-d-share`,
-`dark-d-entry` (desktop `d` = 1440×950, mobile `m` = 390×844).
+At the time of this release, `docs/screenshots/` held `dark-d-today`,
+`light-d-today`, `dark-m-today`, `dark-m-journal`, `dark-d-map`, `dark-m-map`,
+`m-more`, `dark-d-share`, `dark-d-entry` (desktop `d` = 1440×950, mobile `m` =
+390×844).
+
+> **That set has since been replaced.** `docs/screenshots/` now holds the V0.3
+> captures, which no longer show the V0.2 interface. This report is kept as the
+> historical record of what shipped at `aefb3fc`; for current stills see
+> [V0_3_UI_REDESIGN_REPORT.md](V0_3_UI_REDESIGN_REPORT.md).
 
 ### What was *not* tested, stated plainly
 

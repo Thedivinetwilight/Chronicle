@@ -70,14 +70,12 @@ export function ProjectsPage() {
       {projects === undefined ? <SkeletonList rows={4} /> : null}
 
       {projects && visible.length === 0 ? (
-        <EmptyState icon="folder" title={scope === 'archived' ? 'Nothing archived' : 'No projects yet'}>
-          Projects group journal entries, tasks and milestones. Create one for anything you keep
-          coming back to.
-          <div style={{ marginTop: 'var(--space-3)' }}>
-            <Button variant="primary" icon="plus" onClick={() => setEditing('new')}>
-              Create a project
-            </Button>
-          </div>
+        <EmptyState
+          compact
+          icon="folder"
+          title={scope === 'archived' ? 'Nothing archived' : 'No projects yet'}
+        >
+          {scope === 'archived' ? 'Archived projects appear here.' : 'Group entries, tasks and milestones for work you return to.'}
         </EmptyState>
       ) : null}
 

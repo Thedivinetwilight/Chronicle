@@ -46,7 +46,6 @@ export function SearchPage() {
       <header className="page__header">
         <div className="page__title">
           <h1>Search</h1>
-          <span className="text-xs text-faint">Your archive only. Nothing leaves this device.</span>
         </div>
       </header>
 
@@ -70,15 +69,21 @@ export function SearchPage() {
       </div>
 
       {!trimmed ? (
-        <EmptyState icon="search" title="Search your archive">
-          Try a word from an old entry, a tag like <code>#debugging</code>, or a project name. Matches
-          include titles, bodies, tags and the original capture text.
+        /* Compact, like every other empty state: the search field above is the
+           thing to act on, and a 280px dashed panel said nothing the one line
+           does not. The hint names what is searched rather than restating it
+           three ways.
+           The mark is `star`, not `compass`: Search has no drawn mark of its own
+           in the navigation, and `compass` is the Life map's — using it would
+           repeat the §6.3 defect (two destinations, one glyph). */
+        <EmptyState mark="star" compact title="Search your archive">
+          Titles, text, tags and the words you captured.
         </EmptyState>
       ) : hits === undefined ? (
-        <EmptyState icon="search" title="Searching…" />
+        <EmptyState mark="star" compact title="Searching…" />
       ) : hits.length === 0 ? (
-        <EmptyState icon="search" title={`No matches for “${trimmed}”`}>
-          Check the spelling, try a shorter word, or search a tag with <code>#</code>.
+        <EmptyState mark="star" compact title={`No matches for “${trimmed}”`}>
+          Try a shorter word, or a tag with #.
         </EmptyState>
       ) : (
         grouped.map(([groupKind, groupHits]) => (

@@ -14,7 +14,8 @@ import { ChronicleProvider } from './state/ChronicleContext';
 import { DATABASE_NAME, getDatabase, setDatabase } from './data/db';
 
 const ROUTES: [path: string, heading: RegExp][] = [
-  ['/', /good (morning|afternoon|evening)|late night/i],
+  // Today is mastheaded by its date, not a time-of-day greeting.
+  ['/', /\d{1,2} \w{3} \d{4}|\w{3,9} \d{1,2},? \d{4}/i],
   ['/map', /life map/i],
   ['/journal', /journal/i],
   ['/journal/new', /new experience/i],
@@ -67,6 +68,8 @@ describe('routes', () => {
 
   it('sends an unknown path home rather than to a blank screen', async () => {
     renderAt('/definitely-not-a-page');
-    expect(await screen.findByRole('heading', { level: 1, name: /good |late night/i })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /\d{1,2} \w{3} \d{4}|\w{3,9} \d{1,2},? \d{4}/i })
+    ).toBeTruthy();
   });
 });

@@ -158,8 +158,13 @@ describe('capture save pipeline', () => {
     expect((await store.listEntries()).map((entry) => entry.title)).toContain('Testing Chronicle');
   });
 
-  it('saves locally and discloses the fallback when the AI provider is unreachable', async () => {
-    // Seed AI-on settings before the app boots.
+  it('never calls the network during capture, even when a remote provider is configured', async () => {
+    /* V0.3 runs the on-device analyzer only. This test used to assert that a
+       failed remote call was disclosed and fell back to local capture; the
+       remote path is now unreachable from the app, and the Settings interface
+       for it is gone. The contract that matters — capture is local, offline and
+       silent on the network — is asserted directly, with a provider still
+       configured in storage so a regression that re-enables it would fail here. */
     const seeder = new DexieChronicleStore();
     expect(await seeder.init()).toBe(true);
     await seeder.updateSettings({
@@ -173,27 +178,26 @@ describe('capture save pipeline', () => {
       }
     });
     setAiSessionKey('test-session-key');
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('network down'));
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     renderAt('/');
     await screen.findByLabelText(/Write something that happened/i);
     await openCaptureAndType('Testing Chronicle');
 
-    // Review mode surfaces the provider notices before writing.
     fireEvent.click(screen.getByRole('button', { name: 'Review' }));
     const reviewButtons = screen.getAllByRole('button', { name: 'Review' });
     fireEvent.click(reviewButtons[reviewButtons.length - 1]!);
 
     expect(await screen.findByRole('heading', { name: 'Review before saving' })).toBeTruthy();
-    expect(fetchSpy).toHaveBeenCalled();
-    // The failed remote call is disclosed honestly …
-    expect(screen.getByText(/could not be reached/i)).toBeTruthy();
-    // … and basic local capture still works: confirm and it saves on-device.
+    // Nothing left the device, and no failure was invented to explain it.
+    expect(fetchSpy).not.toHaveBeenCalled();
+
     fireEvent.click(screen.getByRole('button', { name: 'Save to archive' }));
     expect(await screen.findByRole('heading', { name: 'Saved' })).toBeTruthy();
 
     const store = await reloadedStore();
     expect((await store.listEntries()).map((entry) => entry.title)).toContain('Testing Chronicle');
+    fetchSpy.mockRestore();
   });
 
   it('saves exactly one record when Save is tapped twice in quick succession', async () => {

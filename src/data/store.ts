@@ -25,6 +25,7 @@ import type {
   AppSettings,
   Chapter,
   Collection,
+  DatePrecision,
   EntryType,
   IsoDate,
   IsoDateTime,
@@ -105,6 +106,12 @@ export interface TimelineEvent {
   occurred_at: IsoDateTime;
   /** Local calendar date, precomputed for grouping. */
   date: IsoDate;
+  /**
+   * How precisely the record knows its own date. An undated memory is stored at
+   * the instant it was written so lists have an order; the timeline still has
+   * to say so rather than presenting that instant as when it happened.
+   */
+  precision?: DatePrecision;
   title: string;
   subtitle?: string;
   project_id: string | null;

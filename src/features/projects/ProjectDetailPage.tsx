@@ -33,7 +33,7 @@ export function ProjectDetailPage() {
   const [milestoneDraft, setMilestoneDraft] = useState<'new' | null>(null);
 
   if (project === undefined) return <SkeletonList rows={4} />;
-  if (project === null) return <ErrorState title="Project not found" message="It may have been purged on this device." />;
+  if (project === null) return <ErrorState title="Project not found" message="It may have been purged." />;
 
   const openTasks = (tasks ?? []).filter((task) => task.status !== 'done' && task.status !== 'dropped');
 
@@ -156,7 +156,7 @@ export function ProjectDetailPage() {
           </div>
         </div>
         {(entries ?? []).length === 0 ? (
-          <EmptyState icon="book" title="No entries in this project yet">
+          <EmptyState mark="quill" title="No entries in this project yet">
             Capture a sentence and Chronicle will file it here.
           </EmptyState>
         ) : (

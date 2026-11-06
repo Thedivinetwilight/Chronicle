@@ -14,55 +14,12 @@
 
 import { useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Icon, type IconName } from '../../ui/Icon';
+import { Icon } from '../../ui/Icon';
+import { Mark } from '../../ui/art/Mark';
+import { GATHER_NAV, MORE_NAV, PRIMARY_NAV, type NavItem } from './nav';
 import { useChronicle } from '../../state/ChronicleContext';
 import { CaptureDialog } from '../capture/CaptureDialog';
 import { Dialog } from '../../ui/Dialog';
-
-interface NavItem {
-  to: string;
-  label: string;
-  icon: IconName;
-  /** Short label for the tab bar, where space is tight. */
-  short?: string;
-  hint?: string;
-}
-
-const PRIMARY: NavItem[] = [
-  { to: '/', label: 'Today', icon: 'home', short: 'Today' },
-  { to: '/map', label: 'Life map', icon: 'map', short: 'Map' },
-  { to: '/journal', label: 'Journal', icon: 'book', short: 'Journal' },
-  { to: '/chapters', label: 'Chapters', icon: 'layers', short: 'Chapters' },
-  { to: '/paths', label: 'Paths', icon: 'route', short: 'Paths' }
-];
-
-const GATHER: NavItem[] = [
-  { to: '/trips', label: 'Trips', icon: 'plane' },
-  { to: '/places', label: 'Places & people', icon: 'pin', short: 'Places' },
-  { to: '/collections', label: 'Collections', icon: 'archive' },
-  { to: '/share-preview', label: 'Share preview', icon: 'shield', hint: 'Preview only — nothing is published' }
-];
-
-const ELSEWHERE: NavItem[] = [
-  { to: '/projects', label: 'Projects', icon: 'folder' },
-  { to: '/timeline', label: 'Timeline', icon: 'history' },
-  { to: '/search', label: 'Search', icon: 'search' },
-  { to: '/roadmap', label: 'Roadmap', icon: 'compass' },
-  { to: '/settings', label: 'Settings', icon: 'settings' }
-];
-
-/** The five tabs a phone shows; capture sits between the third and fourth. */
-const TABS: NavItem[] = PRIMARY;
-
-/** Look up the section a path belongs to; deeper paths inherit their parent. */
-function sectionTitle(pathname: string): string {
-  const all = [...PRIMARY, ...GATHER, ...ELSEWHERE];
-  // Longest prefix wins, so /places beats /paths-style collisions.
-  const match = all
-    .filter((item) => (item.to === '/' ? pathname === '/' : pathname === item.to || pathname.startsWith(`${item.to}/`)))
-    .sort((a, b) => b.to.length - a.to.length)[0];
-  return match?.label ?? 'Chronicle';
-}
 
 function BrandMark() {
   return (
@@ -88,10 +45,27 @@ function Brand() {
 function SidebarLink({ item }: { item: NavItem }) {
   return (
     <NavLink to={item.to} end={item.to === '/'} className="shell__sidebar-item" title={item.hint}>
-      <Icon name={item.icon} size={17} />
+      {item.mark ? (
+        <Mark name={item.mark} size={18} className="shell__nav-mark" />
+      ) : (
+        <Icon name={item.icon} size={17} />
+      )}
       {item.label}
     </NavLink>
   );
+}
+
+/** The five tabs a phone shows; capture sits between the third and fourth. */
+const TABS = PRIMARY_NAV;
+
+/** Look up the section a path belongs to; deeper paths inherit their parent. */
+function sectionTitle(pathname: string): string {
+  const all = [...PRIMARY_NAV, ...GATHER_NAV, ...MORE_NAV];
+  // Longest prefix wins, so /places beats /paths-style collisions.
+  const match = all
+    .filter((item) => (item.to === '/' ? pathname === '/' : pathname === item.to || pathname.startsWith(`${item.to}/`)))
+    .sort((a, b) => b.to.length - a.to.length)[0];
+  return match?.label ?? 'Chronicle';
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -119,19 +93,19 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Brand />
         <nav className="shell__sidebar-nav" aria-label="Archive">
           <span className="shell__sidebar-label">Archive</span>
-          {PRIMARY.map((item) => (
+          {PRIMARY_NAV.map((item) => (
             <SidebarLink key={item.to} item={item} />
           ))}
         </nav>
         <nav className="shell__sidebar-nav shell__sidebar-nav--secondary" aria-label="Gather">
           <span className="shell__sidebar-label">Gather</span>
-          {GATHER.map((item) => (
+          {GATHER_NAV.map((item) => (
             <SidebarLink key={item.to} item={item} />
           ))}
         </nav>
         <nav className="shell__sidebar-nav shell__sidebar-nav--secondary" aria-label="Elsewhere">
           <span className="shell__sidebar-label">More</span>
-          {ELSEWHERE.map((item) => (
+          {MORE_NAV.map((item) => (
             <SidebarLink key={item.to} item={item} />
           ))}
         </nav>
@@ -164,7 +138,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav className="tabbar" aria-label="Primary">
         {TABS.slice(0, 3).map((item) => (
           <NavLink key={item.to} to={item.to} end={item.to === '/'} className="tabbar__item">
-            <Icon name={item.icon} size={21} />
+            {item.mark ? <Mark name={item.mark} size={22} /> : <Icon name={item.icon} size={21} />}
             {item.short ?? item.label}
           </NavLink>
         ))}
@@ -178,7 +152,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </button>
         {TABS.slice(3).map((item) => (
           <NavLink key={item.to} to={item.to} className="tabbar__item">
-            <Icon name={item.icon} size={21} />
+            {item.mark ? <Mark name={item.mark} size={22} /> : <Icon name={item.icon} size={21} />}
             {item.short ?? item.label}
           </NavLink>
         ))}
@@ -190,7 +164,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <Dialog open={moreOpen} onClose={() => setMoreOpen(false)} title="Everything else" wide>
         <nav aria-label="All destinations" className="form-stack form-stack--tight">
-          {[...PRIMARY, ...GATHER, ...ELSEWHERE].map((item) => (
+          {[...PRIMARY_NAV, ...GATHER_NAV, ...MORE_NAV].map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -198,7 +172,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               className="shell__sidebar-item"
               onClick={() => setMoreOpen(false)}
             >
-              <Icon name={item.icon} size={18} />
+              {item.mark ? <Mark name={item.mark} size={18} /> : <Icon name={item.icon} size={18} />}
               <span style={{ flex: 1, minWidth: 0 }}>{item.label}</span>
               {item.hint ? (
                 /* The hint used to collide with the label on a phone: both were

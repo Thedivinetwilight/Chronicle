@@ -211,7 +211,34 @@ describe('labels and text equivalents', () => {
     const map = buildLifeMap({ ...emptyInput(), entries: [entry] });
     const node = map.nodes[0]!;
     expect(node.uncertain).toBe(true);
-    expect(node.description).toMatch(/approximate|read from your words/);
+    expect(node.undated).toBe(false);
+    expect(node.description).toMatch(/date given as a month|read from your words/);
+  });
+
+  it('separates "no date at all" from "a loose date"', () => {
+    /* These were one flag, so a record with no date rendered as
+       "26 Sep 2026 · approximate" — a date it explicitly does not claim, and a
+       precision it does not have either. */
+    const undated = createEntry(
+      { body: 'Somewhere around the monsoon', occurred_at: '2026-09-26T12:00:00.000Z', occurred_precision: 'unknown' },
+      context
+    );
+    const loose = createEntry(
+      { body: 'A vague memory', occurred_at: '2024-05-15T12:00:00.000Z', occurred_precision: 'month' },
+      context
+    );
+    const map = buildLifeMap({ ...emptyInput(), entries: [undated, loose] });
+
+    const noDate = map.nodes.find((node) => node.id === undated.id)!;
+    expect(noDate.undated).toBe(true);
+    expect(noDate.uncertain).toBe(false);
+    expect(noDate.description).toContain('date not recorded');
+    // The raw enum must not reach a reader.
+    expect(noDate.description).not.toMatch(/unknown\)/);
+
+    const vague = map.nodes.find((node) => node.id === loose.id)!;
+    expect(vague.undated).toBe(false);
+    expect(vague.uncertain).toBe(true);
   });
 });
 

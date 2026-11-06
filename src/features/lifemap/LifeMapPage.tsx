@@ -13,7 +13,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useChronicle } from '../../state/ChronicleContext';
 import { useChapterEntries, useLifeMapSource, useMemoryLinks } from '../../state/hooks';
 import { buildLifeMap, filterNodes, hitTest, mapLabel, type LifeNode, type LifeNodeKind } from '../../domain/lifeMap/layout';
@@ -22,19 +22,9 @@ import { Icon } from '../../ui/Icon';
 import { Badge, Button, IconButton, Segmented, Select } from '../../ui/primitives';
 import { EmptyState, ErrorState, SkeletonList } from '../../ui/states';
 import { formatDateLabel, localDateIso } from '../../domain/time';
-import { LifeMapCanvas, LIFE_NODE_KIND_LABEL } from './LifeMapCanvas';
+import { LifeMapCanvas, LegendGlyph, LIFE_NODE_KIND_LABEL } from './LifeMapCanvas';
 
 type View = 'map' | 'outline';
-
-const KIND_ICON: Record<LifeNodeKind, 'book' | 'map' | 'route' | 'pin' | 'people' | 'plane' | 'layers'> = {
-  chapter: 'map',
-  experience: 'book',
-  path: 'route',
-  place: 'pin',
-  person: 'people',
-  trip: 'plane',
-  collection: 'layers'
-};
 
 const LEGEND: { kind: LifeNodeKind; label: string }[] = [
   { kind: 'chapter', label: 'Chapter' },
@@ -52,6 +42,11 @@ export function LifeMapPage() {
   const pendingLinks = useMemoryLinks({ status: 'suggested' });
 
   const [view, setView] = useState<View>('map');
+  /* `/map?focus=<recordId>` arrives from an entry, a chapter or a trip and opens
+     with that record already selected, so "show on the map" is a real journey
+     rather than a link that dumps you on a canvas to hunt for yourself. */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusId = searchParams.get('focus');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [chapterFilter, setChapterFilter] = useState<string>('');
   const [kindFilter, setKindFilter] = useState<'all' | LifeNodeKind>('all');
@@ -95,6 +90,17 @@ export function LifeMapPage() {
   useEffect(() => {
     if (selectedKey && layout && !layout.nodes.some((node) => node.key === selectedKey)) setSelectedKey(null);
   }, [layout, selectedKey]);
+
+  /* Resolve the incoming focus id once the layout exists, then drop the query
+     parameter so a later refresh does not re-select over the user's choice. */
+  useEffect(() => {
+    if (!focusId || !layout) return;
+    const match = layout.nodes.find((node) => node.key === focusId || node.id === focusId);
+    if (match) {
+      setSelectedKey(match.key);
+      setSearchParams({}, { replace: true });
+    }
+  }, [focusId, layout, setSearchParams]);
 
   if (source === undefined) {
     return (
@@ -160,7 +166,7 @@ export function LifeMapPage() {
       />
 
       {total === 0 ? (
-        <EmptyState icon="map" title="Your map is waiting for its first memory">
+        <EmptyState mark="compass" title="Your map is waiting for its first memory">
           A life map is built from what you record — an experience, then the chapter it belongs to, a place you went, a
           path you set out on. Nothing is invented to fill it.
           <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
@@ -286,16 +292,28 @@ export function LifeMapPage() {
               ) : (
                 <div className="panel">
                   <div className="panel__header">
-                    <span className="panel__title">How to read this map</span>
+                    <span className="panel__title">Legend</span>
                   </div>
-                  <div className="panel__body text-sm text-muted">
-                    <p>
-                      Chapters radiate from the centre in date order, and each experience sits along its chapter at the
-                      point of its date. Paths run alongside the era they belong to. Places, people, trips and
-                      collections appear only where a record exists.
-                    </p>
-                    <p>
-                      Select any node to open the underlying record. The Outline view lists the same map as text.
+                  <div className="panel__body">
+                    {/* A legend instead of two paragraphs of prose. The shapes
+                        are the map's actual grammar, so showing them teaches
+                        faster than describing them — and it stays true if the
+                        drawing changes. */}
+                    <ul className="legend">
+                      {(['chapter', 'path', 'experience', 'place', 'person', 'trip', 'collection'] as LifeNodeKind[]).map(
+                        (kind) => (
+                          <li key={kind} className="legend__item">
+                            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                              <LegendGlyph kind={kind} />
+                            </svg>
+                            <span>{LIFE_NODE_KIND_LABEL[kind]}</span>
+                          </li>
+                        )
+                      )}
+                    </ul>
+                    <p className="text-xs text-faint legend__note">
+                      Chapters set the order. Experiences sit where their date falls. Open Outline for the same records
+                      as text.
                     </p>
                   </div>
                 </div>
@@ -382,7 +400,7 @@ function PageHeader({ action }: { action?: React.ReactNode }) {
         <span className="eyebrow">Your archive, mapped</span>
         <h1>Life map</h1>
         <p className="text-sm text-muted measure">
-          A private view of how your chapters, experiences, paths, places and people connect. Nothing here is shared.
+          Everything you have recorded, and what you connected. Nothing here is shared.
         </p>
       </div>
       {action}
@@ -405,7 +423,13 @@ function NodeDetail({ node, onClose }: { node: LifeNode; onClose: () => void }) 
       <div className="panel__header">
         <div>
           <div className="mapdetail__kind">
-            <Icon name={KIND_ICON[node.kind]} size={13} /> {LIFE_NODE_KIND_LABEL[node.kind]}
+            {/* The legend's own glyph, not a generic icon. At 13px the outlined
+                set read as a box before the word, and the map's grammar is the
+                thing this label is naming. */}
+            <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <LegendGlyph kind={node.kind} />
+            </svg>
+            {LIFE_NODE_KIND_LABEL[node.kind]}
             {node.visibility !== 'private' ? <Badge tone="warning">audience: {node.visibility} (not implemented)</Badge> : null}
           </div>
           <div className="mapdetail__title" id="mapdetail-title">
@@ -415,19 +439,25 @@ function NodeDetail({ node, onClose }: { node: LifeNode; onClose: () => void }) 
         <IconButton name="close" label="Close details" onClick={onClose} size={18} />
       </div>
       <div className="panel__body">
-        <p className="mapdetail__description">{node.description}</p>
+        {node.description && !node.description.startsWith(node.label) ? (
+          <p className="mapdetail__description">{node.description}</p>
+        ) : null}
         <dl className="mapdetail__facts">
           <li>
             <dt>Date</dt>
             <dd>
-              {node.date ? formatDateLabel(localDateIso(node.date, timezone)) : 'Not recorded'}
-              {node.uncertain ? ' (approximate)' : ''}
+              {node.undated || !node.date ? 'Not recorded' : formatDateLabel(localDateIso(node.date, timezone))}
+              {!node.undated && node.date && node.uncertain ? ' · approximate' : ''}
             </dd>
           </li>
-          <li>
-            <dt>Chapter</dt>
-            <dd>{node.chapterId ? 'Filed in a chapter' : 'Not in a chapter'}</dd>
-          </li>
+          {/* A chapter is not filed in a chapter: that row said "Filed in a
+              chapter" about the chapter you were looking at. */}
+          {node.kind === 'chapter' ? null : (
+            <li>
+              <dt>Chapter</dt>
+              <dd>{node.chapterId ? 'Filed in a chapter' : 'Not in a chapter'}</dd>
+            </li>
+          )}
           <li>
             <dt>Privacy</dt>
             <dd>{node.visibility === 'private' ? 'Private to you' : `${node.visibility} (declared; sharing is not implemented)`}</dd>
@@ -498,7 +528,10 @@ function MapOutline({
       {groups.map((group) => (
         <section key={group.kind} aria-label={LIFE_NODE_KIND_LABEL[group.kind]}>
           <div className="outline__group-title">
-            <Icon name={KIND_ICON[group.kind]} size={13} /> {LIFE_NODE_KIND_LABEL[group.kind]} · {group.items.length}
+            <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <LegendGlyph kind={group.kind} />
+            </svg>{' '}
+            {LIFE_NODE_KIND_LABEL[group.kind]} · {group.items.length}
           </div>
           <div className="card list">
             {group.items.map((node) => {
@@ -519,9 +552,12 @@ function MapOutline({
                   <span className="outline__text">
                     <span className="outline__label">{mapLabel(node.label, 60)}</span>
                     <span className="outline__meta">
-                      {node.date ? formatDateLabel(localDateIso(node.date, timezone)) : 'No date recorded'}
-                      {node.uncertain ? ' · approximate' : ''} · {connections} connection{connections === 1 ? '' : 's'}
-                      {node.visibility !== 'private' ? ` · audience: ${node.visibility}` : ''}
+                      {node.undated || !node.date ? 'No date recorded' : formatDateLabel(localDateIso(node.date, timezone))}
+                      {!node.undated && node.date && node.uncertain ? ' · approximate' : ''} · {connections} connection{connections === 1 ? '' : 's'}
+                      {/* Kept: a record declared to a wider audience is worth
+                          flagging in the text view too, with the honest note
+                          that nothing can actually be published. */}
+                      {node.visibility !== 'private' ? ` · audience: ${node.visibility} (not implemented)` : ''}
                     </span>
                   </span>
                 </button>
@@ -588,8 +624,8 @@ function SuggestionHelper({ onGenerated }: { layoutReady: boolean; onGenerated: 
       </div>
       <div className="panel__body">
         <p className="text-xs text-faint">
-          Scans your own records on this device for shared dates, tags and recorded places. Anything it finds is saved
-          as a suggestion for you to accept or dismiss — never as a fact, and never sent anywhere.
+          Finds records that share a date, tag or place. Each is offered for you to accept — never added as a fact, and
+          never sent anywhere.
         </p>
         {error ? (
           <p className="note note--danger" role="alert">

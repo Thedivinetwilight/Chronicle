@@ -9,8 +9,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useChronicle } from '../../state/ChronicleContext';
 import { useDeleted, useStats } from '../../state/hooks';
-import { setAiSessionKey } from '../../state/aiSession';
-import { Badge, Button, Details, Field, IconButton, Segmented, Select, Switch, TextInput } from '../../ui/primitives';
+import { Button, Details, Field, IconButton, Segmented, Select, Switch } from '../../ui/primitives';
 import { EmptyState } from '../../ui/states';
 import { APP_VERSION } from '../../domain/export/archive';
 import { serializeArchive } from '../../domain/export/archive';
@@ -52,7 +51,6 @@ export function SettingsPage() {
   const [importPreview, setImportPreview] = useState<Awaited<ReturnType<typeof store.parseArchive>> | null>(null);
   const [strategy, setStrategy] = useState<ImportStrategy>('merge');
   const [backupAcknowledged, setBackupAcknowledged] = useState(false);
-  const [aiKey, setAiKey] = useState('');
   const [busy, setBusy] = useState(false);
 
   const timezoneOptions = useMemo(() => {
@@ -160,7 +158,10 @@ export function SettingsPage() {
           <h2 className="text-sm">Capture</h2>
         </div>
         <div className="card__body form-stack">
-          <Field label="Default mode" hint="Quick saves directly when the reading is confident; review always asks first.">
+          <Field
+            label="Default mode"
+            hint="Chronicle reads what you type on this device. Quick saves unless something is ambiguous; Review always asks first; Silent files without asking."
+          >
             <Segmented
               label="Default capture mode"
               value={settings.capture_mode}
@@ -168,7 +169,7 @@ export function SettingsPage() {
               options={[
                 { value: 'quick', label: 'Quick' },
                 { value: 'review', label: 'Review' },
-                { value: 'autonomous', label: 'Autonomous' }
+                { value: 'autonomous', label: 'Silent' }
               ]}
             />
           </Field>
@@ -183,63 +184,12 @@ export function SettingsPage() {
         </div>
       </section>
 
-      <section className="card" aria-label="AI assistance">
-        <div className="card__header">
-          <h2 className="text-sm">AI assistance (opt-in)</h2>
-          <Badge tone={settings.ai.enabled ? 'warning' : 'neutral'}>{settings.ai.enabled ? 'enabled' : 'off'}</Badge>
-        </div>
-        <div className="card__body form-stack">
-          <p className="text-sm text-muted">
-            Capture works entirely on this device. A model can be consulted for structure suggestions
-            only if you turn this on; your text is never rewritten by it, and nothing is sent while it
-            is off.
-          </p>
-          <Switch
-            checked={settings.ai.enabled}
-            onChange={(next) => void updateSettings({ ai: { ...settings.ai, enabled: next } })}
-            label="Consult a model when capturing"
-          />
-          {settings.ai.enabled && (
-            <>
-              <Field label="Endpoint" hint="An OpenAI-compatible /chat/completions URL you control.">
-                <TextInput
-                  value={settings.ai.endpoint}
-                  onChange={(next) => void updateSettings({ ai: { ...settings.ai, endpoint: next } })}
-                  placeholder="https://example.invalid/v1/chat/completions"
-                />
-              </Field>
-              <Field label="Model">
-                <TextInput
-                  value={settings.ai.model}
-                  onChange={(next) => void updateSettings({ ai: { ...settings.ai, model: next } })}
-                  placeholder="model-name"
-                />
-              </Field>
-              <Field label="API key (this session only)" hint="Kept in memory for this session; never stored, exported or logged.">
-                <TextInput
-                  type="password"
-                  value={aiKey}
-                  onChange={(next) => {
-                    setAiKey(next);
-                    setAiSessionKey(next);
-                  }}
-                  placeholder="sk-…"
-                />
-              </Field>
-              <Switch
-                checked={settings.ai.allow_private}
-                onChange={(next) => void updateSettings({ ai: { ...settings.ai, allow_private: next } })}
-                label="Allow private records in AI context"
-                description="Off by default: private entries and projects are never sent."
-              />
-              <p className="text-xs text-faint">
-                If the request fails or times out, Chronicle falls back to on-device capture and tells
-                you it did.
-              </p>
-            </>
-          )}
-        </div>
-      </section>
+      {/* There is deliberately no AI section in V0.3. The capture provider
+          (`src/domain/capture/provider.ts`), the strict remote-response
+          validation, and the `ai` settings field are all still here and still
+          tested; capture simply always uses the local, on-device analyzer until a
+          later release brings the opt-in interface back. Nothing in the app makes
+          a network call. */}
 
       <section className="card" aria-label="Data">
         <div className="card__header">

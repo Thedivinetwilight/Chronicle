@@ -883,6 +883,7 @@ export class DexieChronicleStore implements ChronicleStore {
           record_id: entry.id,
           occurred_at: entry.occurred_at,
           date: localDateIso(entry.occurred_at, tz),
+          precision: entry.occurred_precision,
           title: entry.title || firstLine(entry.body),
           ...(entry.summary ? { subtitle: entry.summary } : {}),
           project_id: entry.project_id ?? null,

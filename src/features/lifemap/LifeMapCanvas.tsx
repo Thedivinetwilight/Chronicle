@@ -473,11 +473,38 @@ function EdgePath({
   if (!from || !to) return null;
   const cx = (from.x + to.x) / 2;
   const cy = (from.y + to.y) / 2;
-  // A gentle bow away from the centre keeps edges from stacking on the axes.
-  const bow = 0.12;
-  const control = {
-    x: cx + (cx - (from.x + to.x) / 2) * bow + (to.y - from.y) * bow,
-    y: cy + (to.x - from.x) * bow
+
+  /* Branches are drawn as hand-cut curves, not protractor arcs.
+     The bow is derived from the edge's own id, so each branch keeps a stable
+     personality across renders — a map that is re-drawn identically every time
+     you open it reads as an object, not an animation. The bow pushes outward
+     from the centre so branches splay away from the trunk. */
+  const seedHash = (() => {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < edge.id.length; i += 1) {
+      h ^= edge.id.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    return (h >>> 0) / 0xffffffff;
+  })();
+  // 0.08–0.26 of the half-span, biased outward from the drawing's centre.
+  const bow = 0.08 + seedHash * 0.18;
+  const outwardX = cx - (from.x + to.x) / 2;
+  const outwardY = cy - (from.y + to.y) / 2;
+  const perpX = -(to.y - from.y);
+  const perpY = to.x - from.x;
+
+  /* Two control points instead of one: the first leaves the node almost along
+     its own radius (so a branch looks attached, not glued), the second settles
+     into the target. Cubic gives the gentle S of a drawn line. */
+  const t = 0.34;
+  const c1 = {
+    x: from.x + (cx - from.x) * t + outwardX * bow,
+    y: from.y + (cy - from.y) * t + outwardY * bow
+  };
+  const c2 = {
+    x: to.x + (cx - to.x) * t + outwardX * bow + perpX * 0.02,
+    y: to.y + (cy - to.y) * t + outwardY * bow + perpY * 0.02
   };
   const isActive = selectedKey === edge.from || selectedKey === edge.to;
   const className = [
@@ -490,10 +517,71 @@ function EdgePath({
     .join(' ');
   return (
     <>
-      <path d={`M ${from.x} ${from.y} Q ${control.x} ${control.y} ${to.x} ${to.y}`} className={className} />
+      <path
+        d={`M ${from.x.toFixed(1)} ${from.y.toFixed(1)} C ${c1.x.toFixed(1)} ${c1.y.toFixed(1)}, ${c2.x.toFixed(1)} ${c2.y.toFixed(1)}, ${to.x.toFixed(1)} ${to.y.toFixed(1)}`}
+        className={className}
+      />
       <title>{edge.label}</title>
     </>
   );
+}
+
+
+/* ------------------------------------------------------------------ *
+ * Legend — the same grammar as the drawing, at icon size
+ * ------------------------------------------------------------------ */
+
+/**
+ * One node kind, drawn in a 24-unit box.
+ *
+ * This deliberately reuses the same shape decisions as `Glyph` (a diamond for a
+ * chapter, a ringed dot for a path, a pin for a place …) so the legend cannot
+ * drift from the map. If the map's vocabulary changes, this changes with it —
+ * which is the whole point of not hand-writing a second set of icons.
+ */
+export function LegendGlyph({ kind }: { kind: LifeNodeKind }) {
+  const c = { cx: 12, cy: 12 };
+  switch (kind) {
+    case 'chapter':
+      return <rect x={6.5} y={6.5} width={11} height={11} rx={1.5} transform="rotate(45 12 12)" className="lifemap__shape--chapter" fill="var(--map-fill-chapter)" stroke="var(--map-ink-chapter)" strokeWidth={1.4} />;
+    case 'path':
+      return (
+        <>
+          <circle {...c} r={4.2} fill="var(--map-fill-path)" stroke="var(--map-ink-path)" strokeWidth={1.4} />
+          <circle {...c} r={7.2} fill="none" stroke="var(--map-ink-path)" strokeWidth={1.1} opacity={0.55} />
+        </>
+      );
+    case 'experience':
+      return <circle {...c} r={3.6} fill="var(--map-fill-experience)" stroke="var(--map-ink-experience)" strokeWidth={1.4} />;
+    case 'place':
+      return (
+        <path
+          d="M12 20c3.4-4.2 5.1-7 5.1-9.1A5.1 5.1 0 0 0 12 5.8a5.1 5.1 0 0 0-5.1 5.1c0 2.1 1.7 4.9 5.1 9.1z"
+          fill="var(--map-fill-place)"
+          stroke="var(--map-ink-place)"
+          strokeWidth={1.4}
+        />
+      );
+    case 'person':
+      return (
+        <>
+          <circle {...c} r={5} fill="var(--map-fill-person)" stroke="var(--map-ink-person)" strokeWidth={1.4} />
+          <circle cx={12} cy={10.6} r={1.5} fill="var(--map-ink-person)" />
+          <path d="M9.6 15.4a2.9 2.7 0 0 1 4.8 0" fill="none" stroke="var(--map-ink-person)" strokeWidth={1.2} />
+        </>
+      );
+    case 'trip':
+      return (
+        <>
+          <circle {...c} r={5} fill="var(--map-fill-trip)" stroke="var(--map-ink-trip)" strokeWidth={1.4} />
+          <path d="M9.6 12h4.8M12 9.6v4.8" stroke="var(--map-ink-trip)" strokeWidth={1.2} />
+        </>
+      );
+    case 'collection':
+      return <rect x={7.4} y={7.4} width={9.2} height={9.2} rx={1.2} fill="var(--map-fill-collection)" stroke="var(--map-ink-collection)" strokeWidth={1.4} />;
+    default:
+      return <circle {...c} r={4} fill="none" stroke="currentColor" strokeWidth={1.4} />;
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -530,7 +618,14 @@ function NodeGlyph({
   const resolved = labels.get(node.key);
   const placement = resolved ?? placeLabel(node, mapWidth, mapHeight);
   const { x, anchor, y: labelY } = placement;
-  const uncertainY = labelY > node.y ? labelY + 13 : labelY - 13;
+  /* Read the annotation's baseline from the placement the resolver reserved
+     space for, so what is measured and what is drawn cannot disagree. The
+     fallback recomputes the same rule for nodes with no reserved placement. */
+  const uncertainY = resolved?.noteBox
+    ? resolved.noteBox.y + 10
+    : labelY > node.y
+      ? labelY + 13
+      : labelY - 13;
 
   return (
     <g
@@ -556,12 +651,23 @@ function NodeGlyph({
       <Glyph node={node} selected={selected} />
       {showLabel ? (
         <text x={x} y={labelY} textAnchor={anchor} className="lifemap__label">
-          {node.label}
+          {/* `placement.text` is set only when the resolver had to shorten the
+              label to keep it inside the canvas. The aria-label above keeps the
+              full title, and the full text is in the outline. */}
+          {placement.text ?? node.label}
         </text>
       ) : null}
+      {/* Two different claims, two different marks: a date known only to the
+          week/month/year is "not exact"; a record that states no date is
+          "undated". Neither is left looking like a precise date. */}
       {showLabel && node.uncertain ? (
         <text x={x} y={uncertainY} textAnchor={anchor} className="lifemap__uncertain">
           date not exact
+        </text>
+      ) : null}
+      {showLabel && node.undated ? (
+        <text x={x} y={uncertainY} textAnchor={anchor} className="lifemap__uncertain">
+          undated
         </text>
       ) : null}
       <title>{node.description}</title>
@@ -582,8 +688,13 @@ function Glyph({ node, selected }: { node: LifeNode; selected: boolean }) {
     case 'path':
       return (
         <g className="lifemap__shape-wrap">
-          <circle {...common} r={node.r} />
-          <circle {...common} r={node.r + 4.5} className="lifemap__shape-ring" />
+          <circle {...common} r={node.r} className="lifemap__shape lifemap__shape--path" />
+          <circle
+            cx={node.x}
+            cy={node.y}
+            r={node.r + 4.5}
+            className="lifemap__shape-ring"
+          />
         </g>
       );
     case 'place':
@@ -598,23 +709,26 @@ function Glyph({ node, selected }: { node: LifeNode; selected: boolean }) {
     case 'person':
       return (
         <g className="lifemap__shape-wrap">
-          <circle {...common} r={node.r} />
-          <circle cx={node.x} cy={node.y - node.r * 0.25} r={node.r * 0.32} className="lifemap__shape-detail" />
+          <circle {...common} r={node.r} className="lifemap__shape lifemap__shape--person" />
+          <circle
+            cx={node.x}
+            cy={node.y - node.r * 0.25}
+            r={node.r * 0.32}
+            className="lifemap__shape-detail lifemap__shape-detail--person"
+          />
           <path
             d={`M ${node.x - node.r * 0.6} ${node.y + node.r * 0.6} a ${node.r * 0.6} ${node.r * 0.55} 0 0 1 ${node.r * 1.2} 0`}
-            className="lifemap__shape-detail"
-            fill="none"
+            className="lifemap__shape-detail lifemap__shape-detail--person"
           />
         </g>
       );
     case 'trip':
       return (
         <g className="lifemap__shape-wrap">
-          <circle {...common} r={node.r} />
+          <circle {...common} r={node.r} className="lifemap__shape lifemap__shape--trip" />
           <path
             d={`M ${node.x - node.r * 0.5} ${node.y} h ${node.r} M ${node.x} ${node.y - node.r * 0.5} v ${node.r}`}
-            className="lifemap__shape-detail"
-            fill="none"
+            className="lifemap__shape-detail lifemap__shape-detail--trip"
           />
         </g>
       );
@@ -625,9 +739,12 @@ function Glyph({ node, selected }: { node: LifeNode; selected: boolean }) {
         </g>
       );
     default:
+      // An experience is a plain disc — but it still has to be *drawn*. Without
+      // the token class the circle kept the SVG default black fill, so every
+      // experience rendered as a solid black dot in both themes.
       return (
         <g className="lifemap__shape-wrap">
-          <circle {...common} r={node.r} />
+          <circle {...common} r={node.r} className="lifemap__shape lifemap__shape--experience" />
         </g>
       );
   }

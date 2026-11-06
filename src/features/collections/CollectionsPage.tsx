@@ -11,11 +11,12 @@ import { Link, useParams } from 'react-router-dom';
 import { useChronicle } from '../../state/ChronicleContext';
 import { useCollection, useCollections, useEntries } from '../../state/hooks';
 import type { Collection } from '../../domain/types';
-import { formatDateLabel } from '../../domain/time';
+import { WhenItHappened } from '../../ui/format';
 import { Badge, Button, Field, IconButton, TextArea, TextInput } from '../../ui/primitives';
 import { Dialog } from '../../ui/Dialog';
 import { EmptyState, ErrorState, SkeletonList } from '../../ui/states';
 import { Icon } from '../../ui/Icon';
+import { Cover } from '../../ui/art/Cover';
 
 export function CollectionsPage() {
   const collections = useCollections();
@@ -46,25 +47,27 @@ export function CollectionsPage() {
       ) : null}
 
       {collections.length === 0 ? (
-        <EmptyState icon="layers" title="No collections yet">
-          A collection is a small album you curate. Start one when you notice a thread worth gathering.
-          <div style={{ marginTop: 'var(--space-3)' }}>
-            <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
-              Create a collection
-            </Button>
-          </div>
+        <EmptyState
+          mark="leaf-cluster"
+          compact
+          title="No collections yet"
+        >
+          A small album you curate by hand.
         </EmptyState>
       ) : (
-        <div className="card list">
+        /* A collection is a small exhibition, so it gets a plate and a count
+           rather than a row with a generic layers icon. */
+        <div className="covershelf">
           {collections.map((collection) => (
-            <Link key={collection.id} to={`/collections/${collection.id}`} className="list__item entrycard">
-              <span className="entrycard__title">
-                <Icon name="layers" size={15} className="icon-inline" /> {collection.name}
+            <Link key={collection.id} to={`/collections/${collection.id}`} className="covershelf__item rowlink">
+              <span className="coverframe">
+                <Cover kind="collection" id={collection.id} name={collection.name} />
               </span>
-              <span className="entrycard__meta">
+              <span className="covershelf__name">{collection.name}</span>
+              <span className="covershelf__meta">
                 {collection.entry_ids.length} experience{collection.entry_ids.length === 1 ? '' : 's'}
-                {collection.description ? ` · ${collection.description.slice(0, 80)}` : ''}
               </span>
+              {collection.description ? <span className="covershelf__desc">{collection.description}</span> : null}
             </Link>
           ))}
         </div>
@@ -77,7 +80,7 @@ export function CollectionsPage() {
 
 export function CollectionPage() {
   const { collectionId } = useParams();
-  const { store, toast } = useChronicle();
+  const { store, toast, timezone } = useChronicle();
   const collection = useCollection(collectionId);
   const entries = useEntries({});
   const [editing, setEditing] = useState(false);
@@ -85,7 +88,7 @@ export function CollectionPage() {
   const [error, setError] = useState<string | null>(null);
 
   if (collection === undefined) return <SkeletonList rows={3} />;
-  if (collection === null) return <ErrorState title="Collection not found" message="It may have been deleted on this device." />;
+  if (collection === null) return <ErrorState title="Collection not found" message="It may have been deleted." />;
 
   const members = (entries ?? []).filter((entry) => collection.entry_ids.includes(entry.id) && !entry.deleted_at);
   const missing = collection.entry_ids.length - members.length;
@@ -133,8 +136,8 @@ export function CollectionPage() {
 
       <section aria-label="Experiences in this collection">
         {members.length === 0 ? (
-          <EmptyState icon="layers" title="Nothing gathered yet">
-            Edit the collection to choose experiences from your journal.
+          <EmptyState mark="leaf-cluster" compact title="Nothing gathered yet">
+            Edit this collection to choose experiences.
           </EmptyState>
         ) : (
           <div className="card list">
@@ -142,7 +145,7 @@ export function CollectionPage() {
               <Link key={entry.id} to={`/journal/${entry.id}`} className="list__item entrycard">
                 <span className="entrycard__title">{entry.title || 'Untitled experience'}</span>
                 <span className="entrycard__meta">
-                  {formatDateLabel(entry.occurred_at.slice(0, 10))}
+                  <WhenItHappened at={entry.occurred_at} precision={entry.occurred_precision} timezone={timezone} unknownLabel="Date not recorded" />
                   {entry.private ? ' · private' : ''}
                 </span>
               </Link>
@@ -203,7 +206,7 @@ function CollectionDialog({
   onSaved: (collection: Collection) => void;
   onError: (message: string | null) => void;
 }) {
-  const { store } = useChronicle();
+  const { store, timezone } = useChronicle();
   const entries = useEntries({ limit: 200 });
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -303,7 +306,10 @@ function CollectionDialog({
                       style={{ marginRight: 'var(--space-3)' }}
                     />
                     <span className="text-sm">{entry.title || 'Untitled experience'}</span>
-                    <span className="text-xs text-faint"> · {formatDateLabel(entry.occurred_at.slice(0, 10))}</span>
+                    <span className="text-xs text-faint">
+                      {' · '}
+                      <WhenItHappened at={entry.occurred_at} precision={entry.occurred_precision} timezone={timezone} unknownLabel="no date" />
+                    </span>
                   </label>
                 ))
               )}

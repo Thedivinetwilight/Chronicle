@@ -176,17 +176,17 @@ export function EntryDialog({
             </span>
           </p>
         ) : null}
-        <Field label="Title" hint="Optional — the first line is used when empty.">
+        <Field label="Title" hint="Optional. The first line is used if you leave it blank.">
           <TextInput value={title} onChange={setTitle} maxLength={200} />
         </Field>
-        <Field label="What happened?" required hint="Markdown is supported. Your words are stored exactly as written.">
+        <Field label="What happened?" required hint="Markdown works. Stored exactly as written.">
           <TextArea value={body} onChange={setBody} rows={8} />
         </Field>
         <div className="grid-fields">
           <Field label="Type">
             <Select label="Type" value={type} onChange={setType} options={ENTRY_TYPE_OPTIONS} />
           </Field>
-          <Field label="Chapter" hint="Optional. Eras are on the Chapters page.">
+          <Field label="Chapter" hint="Optional.">
             <Select
               label="Chapter"
               value={chapterId}
@@ -197,7 +197,7 @@ export function EntryDialog({
               ]}
             />
           </Field>
-          <Field label="Path" hint="Optional. A goal or interest this belongs to.">
+          <Field label="Path" hint="Optional.">
             <Select
               label="Path"
               value={pathId}
@@ -208,7 +208,7 @@ export function EntryDialog({
               ]}
             />
           </Field>
-          <Field label="Project" hint="The older, engineering-oriented container.">
+          <Field label="Project" hint="Optional. For work you track across several entries.">
             <Select
               label="Project"
               value={projectId}
@@ -239,7 +239,7 @@ export function EntryDialog({
             checked={isPrivate}
             onChange={setPrivate}
             label="Private"
-            description="Only you can see it. This build has no sharing, so everything stays on this device either way."
+            description="Kept out of share previews. Nothing is published either way."
           />
           <Switch checked={pinned} onChange={setPinned} label="Pinned" description="Keeps this experience at the top." />
         </div>

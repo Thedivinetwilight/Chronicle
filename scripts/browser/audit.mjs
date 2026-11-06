@@ -96,7 +96,37 @@ for (const [route, name] of ROUTES) {
       scrollW: document.documentElement.scrollWidth, innerW: window.innerWidth,
       h1: document.querySelector('h1')?.textContent?.slice(0, 50) ?? null
     }));
-    console.log(`${theme}/${tag} ${route.padEnd(16)} overflow=${info.overflow} (${info.scrollW}/${info.innerW}) h1="${info.h1}"`);
+    /* The Life map is the one view whose layout is computed rather than flowed,
+       so "no horizontal overflow" says nothing about it: its labels are placed
+       by an algorithm and can collide or run outside the drawing while the page
+       itself is perfectly well behaved. Checked here, on every size, because
+       the failures are size-specific (they appeared at 820px and 1400px and
+       nowhere else). */
+    const mapLabels = route === '/map'
+      ? await page.evaluate(() => {
+          const svg = document.querySelector('svg.lifemap__canvas');
+          if (!svg) return null;
+          const sr = svg.getBoundingClientRect();
+          const boxes = [...svg.querySelectorAll('text.lifemap__label, text.lifemap__uncertain')]
+            .map((t) => ({ t: t.textContent, r: t.getBoundingClientRect() }));
+          const clipped = boxes.filter((b) =>
+            b.r.left < sr.left - 0.5 || b.r.right > sr.right + 0.5 ||
+            b.r.top < sr.top - 0.5 || b.r.bottom > sr.bottom + 0.5
+          );
+          let collisions = 0;
+          for (let i = 0; i < boxes.length; i++) {
+            for (let j = i + 1; j < boxes.length; j++) {
+              const a = boxes[i].r, b = boxes[j].r;
+              if (a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5) collisions++;
+            }
+          }
+          return { labels: boxes.length, clipped: clipped.length, collisions };
+        })
+      : null;
+    const mapNote = mapLabels
+      ? ` labels=${mapLabels.labels} clipped=${mapLabels.clipped} collisions=${mapLabels.collisions}`
+      : '';
+    console.log(`${theme}/${tag} ${route.padEnd(16)} overflow=${info.overflow} (${info.scrollW}/${info.innerW}) h1="${info.h1}"${mapNote}`);
   }
 }
 await browser.close();

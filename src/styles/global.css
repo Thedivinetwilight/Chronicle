@@ -334,7 +334,11 @@ ol {
   color: var(--color-accent);
   background: none;
   border: 0;
-  padding: 0;
+  /* A 19px-tall text run is a miss waiting to happen with a thumb. The negative
+     margin keeps the row's rhythm while extending the tappable area; the
+     visual weight of the link does not change. */
+  padding: 8px 6px;
+  margin: -8px -6px;
   cursor: pointer;
   border-radius: var(--radius-xs);
   transition: color var(--duration-fast) var(--ease-out);
@@ -647,6 +651,348 @@ ol {
 
 .tabbar__capture:active {
   transform: scale(0.92);
+}
+
+
+/* ---- today -------------------------------------------------------------- */
+
+/* A dated masthead with one drawn mark. The mark is anchored to the right edge
+   and bleeds very slightly off it, which is what makes the page feel composed
+   rather than decorated: the artwork is part of the margin, not an ornament
+   floating in the middle of the content. */
+.today__masthead {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-2);
+}
+
+.today__masthead-copy {
+  min-width: 0;
+}
+
+.today__title {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--line-height-snug);
+  color: var(--color-text);
+}
+
+.today__masthead-mark {
+  flex: none;
+  /* A printed plate: hairline frame, warm wash, ink line work. It sits flush to
+     the content's right edge the way an illustration sits in a book's margin,
+     rather than floating as a centred icon. */
+  padding: var(--space-2) var(--space-3);
+  margin-right: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--art-wash-a);
+  color: var(--art-ink);
+}
+
+/* On a phone the margin this plate lives in does not exist, and shrunk to a
+   thumbnail the reeds and water lines collapse into noise. The date carries the
+   masthead alone there, and the tab bar already shows the day's sun mark. */
+@media (max-width: 560px) {
+  .today__masthead-mark {
+    display: none;
+  }
+}
+
+/* The writing surface. No border of its own: it sits *in* the page, with a
+   single hairline under the text and the actions below that. A boxed textarea
+   inside a bordered card, inside a page, was three frames for one field. */
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5) 0 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  transition: none;
+}
+
+.composer:focus-within {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.composer__input {
+  width: 100%;
+  min-height: 92px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-snug);
+  letter-spacing: var(--tracking-snug);
+  resize: vertical;
+}
+
+.composer__input::placeholder {
+  color: var(--color-text-faint);
+  /* A placeholder in the writing voice, not a form label. */
+  opacity: 1;
+}
+
+.composer__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.composer__hint {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-faint);
+  letter-spacing: 0.01em;
+}
+
+/* A keyboard shortcut is not information a thumb can act on. On touch devices
+   the hint was the only text in the capture bar and taught nothing the on-screen
+   Save button did not already show, so it is left out rather than read out. */
+@media (hover: none) and (pointer: coarse) {
+  .composer__hint {
+    display: none;
+  }
+}
+
+/* First-run panel: a plate and three short lines. */
+.today__first {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.today__first-plate {
+  /* Fill the slot the grid gives it. */
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.today__first-copy h2 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-snug);
+}
+
+.today__first-copy p {
+  margin: 0 0 var(--space-3);
+}
+
+@media (max-width: 640px) {
+  .today__first {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+  .today__first-plate {
+    height: 84px;
+  }
+}
+
+/* Today's sequence rail. */
+.today__row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.today__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.today__dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-border-strong);
+  flex: none;
+}
+
+.today__dot--lead {
+  background: var(--color-accent);
+}
+
+.today__thread {
+  width: 1px;
+  flex: 1;
+  background: var(--color-border);
+}
+
+.today__row-body {
+  min-width: 0;
+  flex: 1;
+}
+
+
+/* A shelf of chapter plates. Auto-fit keeps one column on a phone and three or
+   four on a wide screen without a route-specific breakpoint. */
+.covershelf {
+  display: grid;
+  /* minmax scales with the viewport so a single item never leaves a hollow
+     two-thirds of the row empty, which is what a fixed 200px track did on a
+     1064px content column. */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
+  gap: var(--space-5) var(--space-4);
+}
+
+.covershelf__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--color-text);
+}
+
+.covershelf__item:hover {
+  text-decoration: none;
+}
+
+.covershelf__name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-snug);
+  line-height: var(--line-height-snug);
+  overflow-wrap: anywhere;
+}
+
+.covershelf__meta {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-faint);
+  letter-spacing: 0.01em;
+}
+
+@media (max-width: 520px) {
+  .covershelf {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: var(--space-3);
+  }
+}
+
+.covershelf--wide {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+}
+
+/* When a shelf holds one or two items, let the track grow so the plates read at
+   a comfortable size rather than as a lonely stamp in the corner. */
+.covershelf:has(> :only-child) {
+  grid-template-columns: minmax(0, 250px);
+}
+
+.covershelf__desc {
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+  /* Two lines at most: the shelf is an index, not the record itself. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* A privacy flag on a trip cover. Deliberately worded rather than an icon-only
+   mark: this is one of the places where the wording has to stay explicit. */
+.covershelf__flag {
+  align-self: flex-start;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-warning-border);
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+}
+
+/* The nav mark carries a touch more optical weight than the stroke icons it
+   replaces, so it sits at the same apparent size. */
+.shell__nav-mark {
+  flex: none;
+  color: var(--art-ink);
+}
+
+.shell__sidebar-item[aria-current='page'] .shell__nav-mark {
+  color: var(--color-accent);
+}
+
+.tabbar__item .shell__nav-mark,
+.tabbar__item svg {
+  color: inherit;
+}
+
+
+/* ---- map legend --------------------------------------------------------- */
+
+.legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  min-width: 0;
+}
+
+.legend__note {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  line-height: var(--line-height-body);
+}
+
+/* ---- section covers ----------------------------------------------------- */
+
+/* A cover sits above its label in the chapter/path/collection index. The plate
+   is the only decorative element on those pages, which is why it can afford to
+   be this quiet. */
+.coverframe {
+  /* A plate is drawn at 120×84 and the frame holds exactly that proportion, at
+     whatever width the shelf track gives it. The frame — not the SVG alone —
+     establishes the box, because a grid/flex child stretches to the track and
+     an SVG with `height: auto` then inherits the wrong shape. */
+  align-self: start;
+  width: 100%;
+  aspect-ratio: 120 / 84;
+  line-height: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-subtle);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.rowlink:hover .coverframe,
+.rowlink:focus-visible .coverframe {
+  border-color: var(--color-border-strong);
 }
 
 /* ---- sidebar (desktop) ------------------------------------------------- */
@@ -1568,62 +1914,57 @@ button.list__item:hover {
 /* ---------------------------------------------------------------- 6 ---- */
 
 /* The composer: a writing surface, not a form in a box. */
-.composer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  transition:
-    border-color var(--duration-fast) var(--ease-out),
-    box-shadow var(--duration-fast) var(--ease-out);
-}
-
-.composer:focus-within {
-  border-color: var(--color-accent-border);
-  box-shadow: 0 0 0 3px var(--color-accent-subtle);
-}
-
-.composer__input {
-  width: 100%;
-  min-height: 84px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--color-text);
-  font-size: var(--font-size-lg);
-  line-height: var(--line-height-body);
-  resize: vertical;
-}
-
-.composer__input:focus {
-  outline: none;
-}
-
-.composer__input::placeholder {
-  color: var(--color-text-faint);
-}
-
-.composer__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--color-border);
-}
-
-.composer__hint {
-  font-size: var(--font-size-2xs);
-  color: var(--color-text-faint);
-  min-width: 0;
-  flex: 1;
-}
 
 /* ---- timeline --------------------------------------------------------- */
+
+/* ---- entry detail ------------------------------------------------------ */
+
+/* The body is prose, so it gets a reading measure and no card. The old frame
+   made a page of writing look like an input, and set the line to the full
+   1062px column — 121 characters at 1440px. */
+.entry__prose {
+  max-width: var(--measure);
+}
+
+.entry__prose .markdown {
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-reading);
+}
+
+.entry__where {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.entry__where-line {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.entry__where-line a {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 3px;
+}
+
+.entry__where-line a:hover {
+  text-decoration-color: currentColor;
+}
+
+.entry__where-label {
+  color: var(--color-text-faint);
+}
+
+.entry__map-link {
+  margin: var(--space-4) 0 0;
+  font-size: var(--font-size-sm);
+}
 
 .timeline {
   display: flex;
@@ -1769,6 +2110,54 @@ button.list__item:hover {
   border-radius: var(--radius-lg);
   border: 1px dashed var(--color-border-strong);
   background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+}
+
+.state--compact {
+  /* `.state` is a centred column; a compact state is one line. Both properties
+     have to be restated or the row silently becomes a stack. */
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  text-align: left;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  border-top: 1px solid var(--color-border);
+}
+
+.state__inline-mark {
+  color: var(--color-text-faint);
+  flex: none;
+}
+
+.state__inline-copy {
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-body);
+}
+
+.state__inline-title {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.state__inline-note {
+  color: var(--color-text-muted);
+}
+
+/* A text space at the start of an inline span is trimmed by the layout engine,
+   which left "No collections yet A small album…" running together. A margin is
+   not a guess about whitespace handling. */
+.state__inline-title + .state__inline-note {
+  margin-left: 0.4em;
+}
+
+.state__inline-action {
+  margin-left: auto;
+  flex: none;
 }
 
 .state__halo {
@@ -2168,6 +2557,16 @@ button.list__item:hover {
   opacity: 0.5;
 }
 
+/* Structural rings around the centre. They had no rule at all, so they kept the
+   SVG default `fill: black` — invisible inside the near-black dark canvas, and a
+   solid black disc over the warm paper canvas in light mode. */
+.lifemap__ring {
+  fill: none;
+  stroke: var(--map-grid);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
 .lifemap__label {
   font-size: 11px;
   font-weight: 500;
@@ -2178,6 +2577,48 @@ button.list__item:hover {
   stroke-linejoin: round;
   pointer-events: none;
   fill: var(--map-ink-experience);
+}
+
+.lifemap__uncertain {
+  /* "date not exact", under a node that has no firm date. It carried no style,
+     so it rendered at the label size in the label colour with no gap. It is an
+     annotation, not a name: smaller, fainter, and never in the accent. */
+  font-size: 9.5px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  fill: var(--map-uncertain);
+  paint-order: stroke;
+  stroke: var(--map-canvas);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.lifemap__shape-detail {
+  /* The detail marks inside a person or trip glyph. Two real faults were here:
+     they inherited the SVG default black fill and painted a blob over the
+     node's own disc, and the stroke was hard-coded to the person ink so a trip's
+     cross came out the wrong colour. Each kind now names its own. */
+  fill: none;
+  stroke-width: 1.2;
+}
+
+.lifemap__shape-detail--person {
+  fill: var(--map-ink-person);
+  stroke: var(--map-ink-person);
+}
+
+.lifemap__shape-detail--trip {
+  stroke: var(--map-ink-trip);
+}
+
+.lifemap__shape-ring {
+  /* The outer ring on a path node, which separates it from an experience disc.
+     It had no rule either, so a black-filled circle sat over the node. */
+  fill: none;
+  stroke: var(--map-ink-path);
+  stroke-width: 1.1;
+  opacity: 0.55;
 }
 
 .lifemap__edge {
@@ -2196,8 +2637,11 @@ button.list__item:hover {
 
 .lifemap__edge--link {
   stroke: var(--map-edge);
-  stroke-width: 1;
-  opacity: 0.75;
+  stroke-width: 1.1;
+  opacity: 0.85;
+  /* A drawn connection is often dashed rather than ruled, and dashing also
+     distinguishes an approved link from a spine without relying on colour. */
+  stroke-dasharray: 4 5;
 }
 
 .lifemap__edge.is-active {
@@ -2466,6 +2910,11 @@ button.list__item:hover {
 }
 
 .outline__group-title {
+  /* The group's shape glyph sits inline with its word, not above it: an SVG is
+     `display: block` by default and took a line of its own. */
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-semibold);
   letter-spacing: var(--tracking-label);

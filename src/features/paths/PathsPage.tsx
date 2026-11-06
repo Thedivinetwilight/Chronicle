@@ -13,10 +13,12 @@ import { useChronicle } from '../../state/ChronicleContext';
 import { usePath, usePathEntries, usePaths } from '../../state/hooks';
 import type { Path } from '../../domain/types';
 import { formatDateLabel } from '../../domain/time';
+import { WhenItHappened } from '../../ui/format';
 import { Button, Field, IconButton, TextArea, TextInput } from '../../ui/primitives';
 import { Dialog } from '../../ui/Dialog';
 import { EmptyState, ErrorState, SkeletonList } from '../../ui/states';
 import { Icon } from '../../ui/Icon';
+import { Cover } from '../../ui/art/Cover';
 
 const STATE_LABEL: Record<Path['state'], string> = {
   active: 'Active',
@@ -53,8 +55,7 @@ export function PathsPage() {
           <span className="eyebrow">Directions, not scores</span>
           <h1>Paths</h1>
           <p className="text-sm text-muted measure">
-            A goal, a hope, a plan or an interest you want to remember — “Learn guitar”, “Visit Japan”. Link
-            experiences as it develops. Nothing here is measured or ranked.
+            A direction you want to remember — a plan, a hope, an interest. Link experiences as it develops.
           </p>
         </div>
         <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
@@ -69,14 +70,12 @@ export function PathsPage() {
       ) : null}
 
       {paths.length === 0 ? (
-        <EmptyState icon="route" title="No paths yet">
-          Paths are how the map shows what you were reaching for, not just what happened. Add one whenever it feels
-          useful — or never.
-          <div style={{ marginTop: 'var(--space-3)' }}>
-            <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
-              Create a path
-            </Button>
-          </div>
+        <EmptyState
+          mark="route"
+          compact
+          title="No paths yet"
+        >
+          What you were reaching for, not only what happened.
         </EmptyState>
       ) : (
         groups.map((group) => (
@@ -86,15 +85,18 @@ export function PathsPage() {
                 {STATE_LABEL[group.state]} · {group.items.length}
               </h2>
             </div>
-            <div className="card list">
+            <div className="covershelf">
               {group.items.map((path) => (
-                <Link key={path.id} to={`/paths/${path.id}`} className="list__item entrycard">
-                  <span className="entrycard__title">{path.title}</span>
-                  <span className="entrycard__meta">
+                <Link key={path.id} to={`/paths/${path.id}`} className="covershelf__item rowlink">
+                  <span className="coverframe">
+                    <Cover kind="path" id={path.id} name={path.title} />
+                  </span>
+                  <span className="covershelf__name">{path.title}</span>
+                  <span className="covershelf__meta">
                     {path.start_date ? `From ${formatDateLabel(path.start_date)}` : 'No start date'}
                     {path.desired_date ? ` · hoped for ${formatDateLabel(path.desired_date)}` : ''}
-                    {path.description ? ` · ${path.description.slice(0, 90)}` : ''}
                   </span>
+                  {path.description ? <span className="covershelf__desc">{path.description}</span> : null}
                 </Link>
               ))}
             </div>
@@ -115,7 +117,7 @@ export function PathsPage() {
 
 export function PathPage() {
   const { pathId } = useParams();
-  const { store, toast } = useChronicle();
+  const { store, toast, timezone } = useChronicle();
   const path = usePath(pathId);
   const entries = usePathEntries(pathId);
   const [editing, setEditing] = useState(false);
@@ -123,7 +125,7 @@ export function PathPage() {
   const [error, setError] = useState<string | null>(null);
 
   if (path === undefined) return <SkeletonList rows={3} />;
-  if (path === null) return <ErrorState title="Path not found" message="It may have been deleted on this device." />;
+  if (path === null) return <ErrorState title="Path not found" message="It may have been deleted." />;
 
   const setState = async (state: Path['state']) => {
     setError(null);
@@ -202,15 +204,17 @@ export function PathPage() {
           </Link>
         </div>
         {entries && entries.length === 0 ? (
-          <EmptyState icon="book" title="Nothing linked yet">
-            Open an experience and choose this path to link it. Linking is always your choice.
+          <EmptyState mark="route" compact title="Nothing linked yet">
+            Link an experience from its own page.
           </EmptyState>
         ) : (
           <div className="card list">
             {(entries ?? []).map((entry) => (
               <Link key={entry.id} to={`/journal/${entry.id}`} className="list__item entrycard">
                 <span className="entrycard__title">{entry.title || 'Untitled experience'}</span>
-                <span className="entrycard__meta">{formatDateLabel(entry.occurred_at.slice(0, 10))}</span>
+                <span className="entrycard__meta">
+                  <WhenItHappened at={entry.occurred_at} precision={entry.occurred_precision} timezone={timezone} unknownLabel="Date not recorded" />
+                </span>
               </Link>
             ))}
           </div>

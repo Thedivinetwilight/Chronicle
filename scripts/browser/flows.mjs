@@ -195,6 +195,119 @@ page.on('pageerror', (e) => errors.push(String(e)));
   await page.evaluate(() => (document.documentElement.style.fontSize = ''));
 }
 
+/* ---------------- 9. artwork ---------------- */
+{
+  // The art is decorative by contract: it must never appear in the accessibility
+  // tree, and it must never be the only thing carrying meaning.
+  await page.setViewportSize({ width: 1440, height: 950 });
+  await page.goto(BASE + '/chapters', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(900);
+
+  /* The profile is fresh each run, so make a real chapter through the UI rather
+     than asserting against an empty archive. */
+  /* The header button is the only create action on the page now: the empty
+     state no longer repeats it, so there is one unambiguous target. */
+  const createBtn = page.getByRole('button', { name: /^new chapter$/i }).first();
+  if (await createBtn.count()) {
+    await createBtn.click();
+    await page.waitForTimeout(500);
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel(/name/i).first().fill('The Chennai years');
+    await dialog.getByRole('button', { name: /create chapter/i }).first().click();
+    await page.waitForTimeout(900);
+    await page.goto(BASE + '/chapters', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(900);
+  }
+
+  const plates = await page.locator('.coverframe svg').count();
+  const ariaHidden = await page.locator('.coverframe svg[aria-hidden="true"]').count();
+  record('every cover plate is decorative (aria-hidden)', plates > 0 && plates === ariaHidden, `${ariaHidden}/${plates}`);
+
+  const names = await page.locator('.covershelf__name').count();
+  record('every cover is paired with a real record name', names === plates, `${names} names / ${plates} plates`);
+
+  // A cover must be derived from the record, so it is stable across reloads.
+  const firstBefore = await page.locator('.coverframe svg path').first().getAttribute('d');
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(900);
+  const firstAfter = await page.locator('.coverframe svg path').first().getAttribute('d');
+  record('a cover is stable across reloads', firstBefore === firstAfter && Boolean(firstBefore));
+
+  // Navigation marks are drawn art, not an icon font.
+  const navMarks = await page.locator('.shell__sidebar-item svg').count();
+  record('primary navigation carries the drawn marks', navMarks >= 5, `${navMarks} marks`);
+
+  // A plate is a filled rectangle at its drawing's proportion. Both halves were
+  // real bugs: `slice` cropped up to half of every drawing inside boxes of
+  // 1.9–3.1:1, and `meet` inside the same boxes letterboxed the wash, leaving a
+  // bare strip down one side. Only a real browser can measure this.
+  const plateBoxes = await page.$$eval('.coverframe', (frames) =>
+    frames.map((frame) => {
+      const svg = frame.querySelector('svg');
+      const box = svg.getBoundingClientRect();
+      const wash = svg.firstElementChild.getBoundingClientRect();
+      return {
+        ratio: box.width / box.height,
+        washFills: Math.abs(wash.width - box.width) <= 1.5 && Math.abs(wash.height - box.height) <= 1.5
+      };
+    })
+  );
+  const boxesAgree = plateBoxes.every((plate) => Math.abs(plate.ratio - 120 / 84) < 0.02);
+  const washFillsAll = plateBoxes.every((plate) => plate.washFills);
+  record(
+    'a cover keeps its proportion and its wash fills the plate',
+    plateBoxes.length > 0 && boxesAgree && washFillsAll,
+    `${plateBoxes.length} plate(s), ratios ${plateBoxes.map((p) => p.ratio.toFixed(2)).join(' ')}`
+  );
+
+  // A section's empty state draws the same mark as its nav entry, so a page
+  // still looks like itself when there is nothing in it — and it is one row,
+  // not a 560px panel. Asserted on a destination whose seeded profile
+  // genuinely has no records.
+  await page.goto(BASE + '/collections', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(700);
+  const emptyMark = await page.locator('.state__inline-mark').count();
+  const emptyTitle = await page.locator('.state__inline-title').first().textContent();
+  const emptyRow = await page.locator('.state--compact').count();
+  // All three halves matter: a mark with no title would be decoration, a title
+  // with no mark means it fell back to the generic icon set, and a non-compact
+  // state means the compact path did not run.
+  record(
+    'an empty section draws its own mark on one compact row',
+    emptyMark === 1 && emptyRow === 1 && /no collections yet/i.test(emptyTitle ?? ''),
+    `${emptyMark} mark(s), row=${emptyRow}, "${(emptyTitle ?? '').trim()}"`
+  );
+
+  // No page offers the same create action twice (header + empty state).
+  const createActions = await page.getByRole('button', { name: /new collection|create a collection/i }).count();
+  record('one create action per page, not two', createActions === 1, `${createActions} button(s)`);
+
+  // "Show on the Life map" is a real journey, not a link to a canvas you must
+  // search yourself: it must arrive with the record already selected.
+  //
+  // Open the entry this run actually created — this profile is fresh, so a
+  // hardcoded id would test nothing. Read the id from the route the detail page
+  // lands on, then follow the page's own map link.
+  await page.goto(BASE + '/journal', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+  await page.locator('.entrycard, .rowlink').first().click();
+  await page.waitForTimeout(1200);
+  const entryPath = new URL(page.url()).pathname;
+  const mapLink = page.locator('.entry__map-link a').first();
+  const mapHref = (await mapLink.count()) ? await mapLink.getAttribute('href') : null;
+  if (mapHref) await page.goto(BASE + mapHref, { waitUntil: 'networkidle' });
+  else await page.goto(BASE + '/map', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1600);
+  const arrivedSelected = await page.locator('.lifemap__node.is-selected').count();
+  const panelOpen = await page.locator('.mapdetail').count();
+  const queryCleared = !page.url().includes('focus=');
+  record(
+    'a focused map link opens with that record selected',
+    arrivedSelected === 1 && panelOpen === 1 && queryCleared,
+    `${entryPath} -> ${mapHref ?? 'no link'}; selected=${arrivedSelected} panel=${panelOpen} queryCleared=${queryCleared}`
+  );
+}
+
 console.log('\nconsole/page errors:', errors.length === 0 ? 'none' : errors.slice(0, 6));
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} flow checks passed`);

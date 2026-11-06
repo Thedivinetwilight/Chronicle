@@ -22,6 +22,7 @@ import { useChronicle } from '../../state/ChronicleContext';
 import { useChapters, useCollections, useEntries, usePaths, usePlaces, useTrips } from '../../state/hooks';
 import { audienceLabel, buildSharePreview } from '../../domain/share/preview';
 import { Icon } from '../../ui/Icon';
+import { WhenItHappened } from '../../ui/format';
 import { Badge, Button, Field, Switch, TextInput } from '../../ui/primitives';
 import { EmptyState, SkeletonList } from '../../ui/states';
 
@@ -101,8 +102,7 @@ export function SharePreviewPage() {
           <span className="eyebrow">A preview, not a post</span>
           <h1>Share preview</h1>
           <p className="text-sm text-muted measure">
-            Choose the records you would consider sharing and see exactly what would be visible — after sensitive
-            details have been removed. Nothing is sent anywhere.
+            Choose records and see exactly what would be visible once sensitive details are removed.
           </p>
         </div>
       </header>
@@ -110,9 +110,8 @@ export function SharePreviewPage() {
       <p className="note note--warning" role="status">
         <Icon name="shield" size={16} className="note__icon" />
         <span>
-          <strong>Sharing is not implemented in this build.</strong> Chronicle has no accounts, no server and no sync.
-          This preview is created and read on your device only; there is no Publish button because there is nowhere to
-          publish to. Anything you select here stays on this device.
+          <strong>Sharing is not implemented in this build.</strong> Chronicle has no accounts, no server and no sync,
+          so nothing you select here can leave this device.
         </span>
       </p>
 
@@ -126,7 +125,7 @@ export function SharePreviewPage() {
             <div className="form-stack form-stack--tight">
               <TextInput value={filter} onChange={setFilter} placeholder="Filter your experiences" />
               {(entries ?? []).length === 0 ? (
-                <EmptyState icon="book" title="Nothing to preview yet">
+                <EmptyState mark="feather" title="Nothing to preview yet">
                   Record an experience first, then come back to see how a share would read.
                 </EmptyState>
               ) : (
@@ -143,7 +142,16 @@ export function SharePreviewPage() {
                         <span className="text-sm">{entry.title || 'Untitled experience'}</span>
                         <span className="text-xs text-faint">
                           {' '}
-                          · {entry.occurred_at.slice(0, 10)}
+                          ·{' '}
+                          {/* The list used to print the raw stored ISO date,
+                              which showed 2026-09-26 for a record whose date
+                              was explicitly recorded as unknown. */}
+                          <WhenItHappened
+                            at={entry.occurred_at}
+                            precision={entry.occurred_precision}
+                            timezone={timezone}
+                            unknownLabel="date not recorded"
+                          />
                           {entry.private ? ' · private' : ''}
                         </span>
                       </span>
@@ -204,7 +212,7 @@ export function SharePreviewPage() {
               </p>
               {preview.items.length === 0 ? (
                 <p className="text-sm text-muted">
-                  Nothing selected yet. Records marked private are excluded unless you deliberately include them below.
+                  Nothing selected yet. Private records stay out unless you include them below.
                 </p>
               ) : (
                 <div className="preview">
@@ -235,7 +243,7 @@ export function SharePreviewPage() {
                   checked={includePrivate}
                   onChange={setIncludePrivate}
                   label="Include records I marked private"
-                  description="Off by default. Turning this on lets private records into the preview only — it still publishes nothing."
+                  description="Off by default. Only affects this preview; still sends nothing."
                 />
               </Field>
 

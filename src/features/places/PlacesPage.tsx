@@ -14,7 +14,7 @@ import { useState } from 'react';
 import { useChronicle } from '../../state/ChronicleContext';
 import { usePeople, usePlaces } from '../../state/hooks';
 import type { Person, Place } from '../../domain/types';
-import { Badge, Button, Field, IconButton, Select, TextArea, TextInput } from '../../ui/primitives';
+import { Button, Field, IconButton, Select, TextArea, TextInput } from '../../ui/primitives';
 import { Dialog } from '../../ui/Dialog';
 import { EmptyState, SkeletonList } from '../../ui/states';
 import { Icon } from '../../ui/Icon';
@@ -41,8 +41,7 @@ export function PlacesPage() {
           <span className="eyebrow">Where and who</span>
           <h1>Places &amp; people</h1>
           <p className="text-sm text-muted measure">
-            Names you typed, kept for yourself. Chronicle does not look up addresses, does not store coordinates, and
-            does not build a profile of anyone.
+            Names you typed. No address lookups, no coordinates, no profile of anyone.
           </p>
         </div>
       </header>
@@ -57,9 +56,8 @@ export function PlacesPage() {
         {places === undefined ? (
           <SkeletonList rows={2} />
         ) : places.length === 0 ? (
-          <EmptyState icon="pin" title="No places yet">
-            A place is a name you will recognise — a city, a street, a venue. Adding one lets trips and experiences
-            point at it.
+          <EmptyState mark="shell" compact title="No places yet">
+            A city, a street, a venue — a name you will recognise.
           </EmptyState>
         ) : (
           <div className="card list">
@@ -92,9 +90,8 @@ export function PlacesPage() {
         {people === undefined ? (
           <SkeletonList rows={2} />
         ) : people.length === 0 ? (
-          <EmptyState icon="people" title="No people recorded">
-            Someone can be recorded as “the person I was with”, with no surname, no contact details and no account.
-            Leaving this empty is a perfectly good choice.
+          <EmptyState icon="people" compact title="No people yet">
+            A first name is enough.
           </EmptyState>
         ) : (
           <div className="card list">
@@ -105,7 +102,13 @@ export function PlacesPage() {
                     <Icon name="people" size={14} className="icon-inline" /> {person.name}
                   </span>
                   <span className="entrycard__meta">
-                    {person.relationship ?? 'No relationship noted'} · <Badge>private</Badge>
+                    {person.relationship ?? 'No relationship noted'}
+                    {/* The badge was hardcoded to "private" on every row, and
+                        the sentence under the list already says people never
+                        appear in a share preview. Printing the stored value
+                        instead keeps the row honest for an imported archive
+                        whose person records carry some other visibility. */}
+                    {person.visibility === 'private' ? ' · private' : ''}
                   </span>
                 </span>
                 <IconButton name="edit" label={`Edit ${person.name}`} onClick={() => setEditingPerson(person)} />
@@ -114,7 +117,7 @@ export function PlacesPage() {
           </div>
         )}
         <p className="text-xs text-faint">
-          People are never shown in a share preview in this build, and no person record can be made public.
+          People never appear in a share preview, and a person record cannot be made public.
         </p>
       </section>
 

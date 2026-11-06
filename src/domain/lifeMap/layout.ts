@@ -78,8 +78,15 @@ export interface LifeNode {
   chapterId: string | null;
   /** ISO date used for ordering/labelling, when the record has one. */
   date: string | null;
-  /** True when the record's date is deliberately imprecise or missing. */
+  /** True when the record's date is deliberately imprecise (a week, a month, a year). */
   uncertain: boolean;
+  /**
+   * True when the record has no stated date at all. Kept distinct from
+   * `uncertain` because they are not the same claim: "I don't know when this
+   * happened" was being rendered as "26 Sep 2026 · approximate", which is a
+   * date the record explicitly does not have.
+   */
+  undated: boolean;
   /** Visibility is carried through so the UI can mark non-private records. */
   visibility: 'private' | 'circles' | 'public';
 }
@@ -191,8 +198,14 @@ function entryDate(entry: JournalEntry): string | null {
   return entry.occurred_at || null;
 }
 
+/** A date the record does claim, but only to the week, month or year. */
 function isImprecise(entry: JournalEntry): boolean {
-  return entry.occurred_precision === 'week' || entry.occurred_precision === 'month' || entry.occurred_precision === 'year' || entry.occurred_precision === 'unknown';
+  return entry.occurred_precision === 'week' || entry.occurred_precision === 'month' || entry.occurred_precision === 'year';
+}
+
+/** A record that states no date at all — a different claim, drawn differently. */
+function hasNoDate(entry: JournalEntry): boolean {
+  return entry.occurred_precision === 'unknown';
 }
 
 function chapterDateRange(chapter: Chapter): { start: string | null; end: string | null } {
@@ -326,7 +339,8 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
       r: 13,
       chapterId: chapter.id,
       date: chapter.start_date ?? null,
-      uncertain: undated,
+      uncertain: false,
+      undated,
       visibility: visibilityOf(chapter)
     });
     edges.push({
@@ -370,6 +384,7 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
           chapterId: chapter.id,
           date: entryDate(entry),
           uncertain: isImprecise(entry),
+          undated: hasNoDate(entry),
           visibility: visibilityOf(entry)
         });
       }
@@ -407,6 +422,7 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
           chapterId: null,
           date: entryDate(entry),
           uncertain: isImprecise(entry),
+          undated: hasNoDate(entry),
           visibility: visibilityOf(entry)
         });
         edges.push({
@@ -530,7 +546,8 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
       r: kind === 'trip' ? 9 : 8,
       chapterId,
       date: kind === 'trip' ? ((record as Trip).start_date ?? null) : null,
-      uncertain: kind === 'trip' ? (record as Trip).date_precision === 'unknown' : false,
+      uncertain: false,
+      undated: kind === 'trip' ? (record as Trip).date_precision === 'unknown' : false,
       visibility: visibilityOf(record)
     };
     nodes.push(node);
@@ -566,7 +583,8 @@ export function buildLifeMap(input: LifeMapInput, options: LayoutOptions = {}): 
         r: 9,
         chapterId,
         date: path.start_date ?? null,
-        uncertain: !path.start_date,
+        uncertain: false,
+        undated: !path.start_date,
         visibility: visibilityOf(path)
       };
       nodes.push(node);
@@ -720,7 +738,11 @@ function describeExperience(entry: JournalEntry, chapterName: string | null): st
     const line = entry.body.split('\n').find((value) => value.trim().length > 0) ?? '';
     parts.push(line.replace(/[#>*_`-]/g, '').trim() || 'Untitled experience');
   }
-  if (isImprecise(entry)) parts.push(`date is approximate (${entry.occurred_precision})`);
+  // Say which kind of imprecision it is, in words. The old string printed the
+  // raw enum — "date is approximate (unknown)" — which is a contradiction and a
+  // leaked identifier in one clause.
+  if (entry.occurred_precision === 'unknown') parts.push('date not recorded');
+  else if (isImprecise(entry)) parts.push(`date given as a ${entry.occurred_precision}`);
   if (entry.occurred_source === 'text') parts.push('date read from your words');
   if (entry.private) parts.push('marked private');
   parts.push(chapterName ? `in chapter ${chapterName}` : 'not in a chapter');
@@ -782,10 +804,11 @@ function computeBounds(
     if (!label) continue;
     include(label.box.x, label.box.y);
     include(label.box.x + label.box.width, label.box.y + label.box.height);
-    if (node.uncertain) {
-      const y = label.y + (label.y > node.y ? 13 : -13);
-      include(label.box.x, y - 10);
-      include(label.box.x + label.box.width, y + 3);
+    // The annotation's own box is already reserved by the resolver, so fitting
+    // the canvas needs only to include it.
+    if (label.noteBox) {
+      include(label.noteBox.x, label.noteBox.y);
+      include(label.noteBox.x + label.noteBox.width, label.noteBox.y + label.noteBox.height);
     }
   }
   const padding = 26;
@@ -808,13 +831,40 @@ function computeBounds(
    pixels, so a 34-character label is wider than the canvas. These constants
    are the cap used when *laying out*, scaled by the canvas, so a label is
    never wider than roughly a third of the drawing on any device. */
-const CHAR_WIDTH = 5.6;
+/*
+ * Average advance width per character for the label face at 11px, with
+ * `letter-spacing: 0.005em`. It was 5.6, which under-measured real labels by up
+ * to 30% — measured labels run 6.3–7.3px per character — so the resolver
+ * believed two labels had cleared each other and believed a label fitted inside
+ * the canvas when it did not. Over-estimating is the safe direction: the cost
+ * is a slightly wider gap, the benefit is that text is never clipped and never
+ * lands on another label.
+ */
+const CHAR_WIDTH = 7.4;
 const LABEL_SHARE = 0.30;
+/** The annotation under a label is set at 9.5px, so it is proportionally narrower. */
+const NOTE_CHAR_WIDTH = 5.9;
 
-/** Estimated horizontal extent of a label at its rendered size. */
+/**
+ * Estimated horizontal extent of a label at its rendered size.
+ *
+ * The label is *cropped* to `cap` in character terms, not clipped in pixels:
+ * text does not wrap or clip on the map, so once a label is longer than the
+ * budget the renderer still draws every character it was given. Treating `cap`
+ * as a pixel ceiling therefore under-measured every long label by a third of
+ * its real width, which is what let a label run off the edge of the canvas.
+ */
 export function labelWidth(label: string, canvasWidth = 920): number {
   const cap = Math.max(88, Math.min(160, canvasWidth * LABEL_SHARE));
-  return Math.min(label.length * CHAR_WIDTH, cap);
+  const budget = Math.floor(cap / CHAR_WIDTH);
+  return Math.min(label.length, budget) * CHAR_WIDTH;
+}
+
+/** Estimated extent of the "date not exact" / "undated" annotation. */
+export function noteWidth(text: string, canvasWidth = 920): number {
+  const cap = Math.max(68, Math.min(124, canvasWidth * LABEL_SHARE));
+  const budget = Math.floor(cap / NOTE_CHAR_WIDTH);
+  return Math.min(text.length, budget) * NOTE_CHAR_WIDTH;
 }
 
 export interface LabelPlacement {
@@ -824,6 +874,19 @@ export interface LabelPlacement {
   anchor: 'start' | 'middle' | 'end';
   /** The label's box, used for bounds and for tests. */
   box: { x: number; y: number; width: number; height: number };
+  /**
+   * The box of the small "date not exact" / "undated" annotation drawn under
+   * this label, when the node has one. It is reserved during placement so no
+   * other label may be laid on top of it — a label colliding with an
+   * annotation was invisible to the resolver, which only ever compared labels.
+   */
+  noteBox?: { x: number; y: number; width: number; height: number };
+  /**
+   * Set only when the label had to be shortened to fit the canvas. The renderer
+   * draws this instead of the node's full text; the accessible name keeps the
+   * full text.
+   */
+  text?: string;
 }
 
 /**
@@ -899,8 +962,15 @@ export function resolveLabelCollisions(
   const placed: { key: string; placement: LabelPlacement }[] = [];
   const out = new Map<string, LabelPlacement>();
 
+  /* A small clearance is required, not merely "not intersecting". Labels were
+     passing the check by a fraction of a pixel — the boxes were estimated, so a
+     half-pixel of daylight between two 11px text runs reads as touching. */
+  const CLEARANCE = 3;
   const overlaps = (a: LabelPlacement['box'], b: LabelPlacement['box']): boolean =>
-    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+    a.x < b.x + b.width + CLEARANCE &&
+    b.x < a.x + a.width + CLEARANCE &&
+    a.y < b.y + b.height + CLEARANCE &&
+    b.y < a.y + a.height + CLEARANCE;
 
   // Chapters and paths first: they are the structure of the map, so they keep
   // the position the rule gives them and everything else moves around them.
@@ -960,9 +1030,33 @@ export function resolveLabelCollisions(
     const hitsGlyph = (box: LabelPlacement['box']) =>
       glyphBoxes.some((glyph) => overlaps(box, glyph));
 
+    /* An annotation sits one line away from the label, on the far side from
+       the node. It has to move with the label, and it has to reserve space. */
+    const NOTE_GAP = 13;
+    const NOTE_HEIGHT = 13;
+    const noteFor = (placement: LabelPlacement) => {
+      if (!node.uncertain && !node.undated) return undefined;
+      // Text is drawn at labelY ± 13; the glyph's top is 3 above that baseline.
+      const y = placement.y > node.y ? placement.y + NOTE_GAP : placement.y - NOTE_GAP;
+      // The annotation shares the label's anchor, so it grows from the same end.
+      const noteW = noteWidth(node.uncertain ? 'date not exact' : 'undated', width);
+      const x =
+        placement.anchor === 'start'
+          ? placement.x
+          : placement.anchor === 'end'
+            ? placement.x - noteW
+            : placement.x - noteW / 2;
+      return { x, y: y - 10, width: noteW, height: NOTE_HEIGHT };
+    };
+
     for (const offset of offsets) {
       const next = shift(base, offset.dx, offset.dy);
-      const clash = placed.some((other) => overlaps(next.box, other.placement.box));
+      const note = noteFor(next);
+      const clash =
+        placed.some((other) => overlaps(next.box, other.placement.box)) ||
+        placed.some((other) => other.placement.noteBox && overlaps(next.box, other.placement.noteBox)) ||
+        (note ? placed.some((other) => overlaps(note, other.placement.box)) : false) ||
+        (note ? placed.some((other) => other.placement.noteBox && overlaps(note, other.placement.noteBox)) : false);
       // Never let the resolver itself push text outside the canvas — an
       // off-canvas label is worse than a slightly tight one.
       const inside = next.box.x >= 4 && next.box.x + next.box.width <= width - 4;
@@ -979,8 +1073,41 @@ export function resolveLabelCollisions(
     if (candidate.box.x + candidate.box.width > width - 4) {
       candidate = shift(candidate, width - 4 - (candidate.box.x + candidate.box.width), 0);
     }
-    out.set(node.key, candidate);
-    placed.push({ key: node.key, placement: candidate });
+
+    /* Last resort, and the only one that is actually a guarantee: if the text is
+       wider than the canvas can hold at this anchor, shorten the text itself.
+       Widths are estimated (only the renderer truly measures), so a clamp that
+       trusts the estimate can still leave a character or two outside. Eliding
+       is lossy but visible and honest; the full text stays in the node's
+       description, its accessible name, and the outline list. */
+    const room =
+      candidate.anchor === 'start'
+        ? width - 8 - candidate.x
+        : candidate.anchor === 'end'
+          ? candidate.x - 8
+          : Math.min(candidate.x - 8, width - 8 - candidate.x) * 2;
+    const fits = Math.max(1, Math.floor(room / CHAR_WIDTH));
+    let text = node.label;
+    if (text.length > fits) {
+      text = mapLabel(node.label, fits);
+      const shortenedW = labelWidth(text, width);
+      const boxX =
+        candidate.anchor === 'start'
+          ? candidate.x
+          : candidate.anchor === 'end'
+            ? candidate.x - shortenedW
+            : candidate.x - shortenedW / 2;
+      candidate = {
+        ...candidate,
+        text,
+        box: { x: Math.max(4, boxX), y: candidate.box.y, width: shortenedW, height: candidate.box.height }
+      };
+    }
+
+    const noteBox = noteFor(candidate);
+    const resolved: LabelPlacement = noteBox ? { ...candidate, noteBox } : candidate;
+    out.set(node.key, resolved);
+    placed.push({ key: node.key, placement: resolved });
   }
   return out;
 }
